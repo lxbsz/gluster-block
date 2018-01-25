@@ -62,6 +62,7 @@ glusterBlockCliRPC_1(void *cobj, clioperations opt)
   blockInfoCli *info_obj;
   blockListCli *list_obj;
   blockModifyCli *modify_obj;
+  blockGModifyCli *gmodify_obj;
   blockResponse reply = {0,};
   char          errMsg[2048] = {0};
 
@@ -145,6 +146,14 @@ glusterBlockCliRPC_1(void *cobj, clioperations opt)
     if (block_modify_cli_1(modify_obj, &reply, clnt) != RPC_SUCCESS) {
       LOG("cli", GB_LOG_ERROR, "%sblock modify on volume %s failed",
           clnt_sperror(clnt, "block_modify_cli_1"), modify_obj->volume);
+      goto out;
+    }
+    break;
+  case GMODIFY_CLI:
+    gmodify_obj = cobj;
+    if (block_gmodify_cli_1(gmodify_obj, &reply, clnt) != RPC_SUCCESS) {
+      LOG("cli", GB_LOG_ERROR, "%sglobal modify failed",
+          clnt_sperror(clnt, "block_gmodify_cli_1"));
       goto out;
     }
     break;

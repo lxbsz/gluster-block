@@ -75,6 +75,13 @@ struct blockModifyCli {
   enum JsonResponseFormat     json_resp;
 };
 
+struct blockGModify {
+  char      username[255];
+  char      password[255];
+  bool      auth_mode;
+  enum JsonResponseFormat     json_resp;
+};
+
 struct blockGModifyCli {
   char      username[255];
   char      password[255];
@@ -94,7 +101,8 @@ program GLUSTER_BLOCK {
     blockResponse BLOCK_CREATE(blockCreate) = 1;
     blockResponse BLOCK_DELETE(blockDelete) = 2;
     blockResponse BLOCK_MODIFY(blockModify) = 3;
-    blockResponse BLOCK_VERSION() = 4;
+    blockResponse BLOCK_GMODIFY(blockGModify) = 4;
+    blockResponse BLOCK_VERSION() = 5;
   } = 1;
 } = 21215311; /* B2 L12 O15 C3 K11 */
 
@@ -105,5 +113,6 @@ program GLUSTER_BLOCK_CLI {
     blockResponse BLOCK_INFO_CLI(blockInfoCli) = 3;
     blockResponse BLOCK_DELETE_CLI(blockDeleteCli) = 4;
     blockResponse BLOCK_MODIFY_CLI(blockModifyCli) = 5;
+    blockResponse BLOCK_GMODIFY_CLI(blockGModifyCli) = 6;
   } = 1;
 } = 212153113; /* B2 L12 O15 C3 K11 C3 */
