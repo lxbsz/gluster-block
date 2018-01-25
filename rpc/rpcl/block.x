@@ -75,6 +75,13 @@ struct blockModifyCli {
   enum JsonResponseFormat     json_resp;
 };
 
+struct blockGModifyCli {
+  char      username[255];
+  char      password[255];
+  bool      auth_mode;
+  enum JsonResponseFormat     json_resp;
+};
+
 struct blockResponse {
   int       exit;       /* exit code of the command */
   string    out<>;      /* output; TODO: return respective objects */

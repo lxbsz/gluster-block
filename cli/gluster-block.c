@@ -45,7 +45,8 @@ typedef enum clioperations {
   LIST_CLI   = 2,
   INFO_CLI   = 3,
   DELETE_CLI = 4,
-  MODIFY_CLI = 5
+  MODIFY_CLI = 5,
+  GMODIFY_CLI = 6
 } clioperations;
 
 
@@ -323,6 +324,47 @@ glusterBlockModify(int argcount, char **options, int json)
 }
 
 static int
+glusterBlockGModify(int argcount, char **options, int json)
+{
+  size_t optind = 2;
+  blockGModifyCli mobj = {0, };
+  int ret = -1;
+
+
+  mobj.json_resp = json;
+
+  /* if auth given then collect status which is next by 'auth' arg */
+  if (!strcmp(options[optind], "auth")) {
+    optind++;
+
+    if (!strcmp(options[optind], "enable")) {
+      optind++;
+      mobj.auth_mode = true;
+      strcpy(mobj.username, options[optind++]);
+      strcpy(mobj.password, options[optind]);
+    } else if (!strcmp(options[optind], "disable")) {
+      mobj.auth_mode = false;
+    } else {
+      MSG("%s\n", "'auth' option is incorrect");
+      MSG("%s\n", GB_GMODIFY_HELP_STR);
+      LOG("cli", GB_LOG_ERROR, "GModify failed while parsing argument "
+                               "to auth for <%s>", options[optind]);
+      goto out;
+    }
+
+    ret = glusterBlockCliRPC_1(&mobj, GMODIFY_CLI);
+    if (ret) {
+      LOG("cli", GB_LOG_ERROR,
+          "failed to setting global auth the cluster:%d", ret);
+    }
+  }
+
+ out:
+
+  return ret;
+}
+
+static int
 glusterBlockCreate(int argcount, char **options, int json)
 {
   size_t optind = 2;
@@ -579,6 +621,13 @@ glusterBlockParseArgs(int count, char **options)
       ret = glusterBlockModify(count, options, json);
       if (ret) {
         LOG("cli", GB_LOG_ERROR, "%s", FAILED_MODIFY);
+      }
+      goto out;
+
+    case GB_CLI_GMODIFY:
+      ret = glusterBlockGModify(count, options, json);
+      if (ret) {
+        LOG("cli", GB_LOG_ERROR, "%s", FAILED_GMODIFY);
       }
       goto out;
 

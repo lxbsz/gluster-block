@@ -75,6 +75,7 @@
 
 /* Target Modify */
 # define  FAILED_MODIFY             "failed in modify"
+# define  FAILED_GMODIFY            "failed in gmodify"
 # define  FAILED_REMOTE_MODIFY      "failed in remote modify"
 # define  FAILED_REMOTE_AYNC_MODIFY "failed in remote async modify"
 
@@ -334,12 +335,13 @@ typedef enum gbCliCmdlineOption {
   GB_CLI_INFO           = 3,
   GB_CLI_DELETE         = 4,
   GB_CLI_MODIFY         = 5,
-  GB_CLI_HELP           = 6,
-  GB_CLI_HYPHEN_HELP    = 7,
-  GB_CLI_VERSION        = 8,
-  GB_CLI_HYPHEN_VERSION = 9,
-  GB_CLI_USAGE          = 10,
-  GB_CLI_HYPHEN_USAGE   = 11,
+  GB_CLI_GMODIFY        = 6,
+  GB_CLI_HELP           = 7,
+  GB_CLI_HYPHEN_HELP    = 8,
+  GB_CLI_VERSION        = 9,
+  GB_CLI_HYPHEN_VERSION = 10,
+  GB_CLI_USAGE          = 11,
+  GB_CLI_HYPHEN_USAGE   = 12,
 
   GB_CLI_OPT_MAX
 } gbCliCmdlineOption;
@@ -351,6 +353,7 @@ static const char *const gbCliCmdlineOptLookup[] = {
   [GB_CLI_INFO]           = "info",
   [GB_CLI_DELETE]         = "delete",
   [GB_CLI_MODIFY]         = "modify",
+  [GB_CLI_GMODIFY]        = "gmodify",
   [GB_CLI_HELP]           = "help",
   [GB_CLI_HYPHEN_HELP]    = "--help",
   [GB_CLI_VERSION]        = "version",
