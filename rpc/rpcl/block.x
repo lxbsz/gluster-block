@@ -18,6 +18,7 @@ struct blockCreate {
   char      ipaddr[255];
   char      volume[255];
   char      gbid[127];                   /* uuid */
+  char      userid[127];
   char      passwd[127];                 /* uuid */
   u_quad_t  size;
   char      block_name[255];
@@ -29,8 +30,10 @@ struct blockModify {
   char      volume[255];
   char      block_name[255];
   char      gbid[127];
+  char      userid[127];
   char      passwd[127];
   bool      auth_mode;
+  bool      g_auth;
 };
 
 struct blockCreateCli {
@@ -75,6 +78,25 @@ struct blockModifyCli {
   enum JsonResponseFormat     json_resp;
 };
 
+struct blockGModify {
+  char      block_name[255];
+  char      gbid[127];
+  char      volume[255];
+  char      userid[255];
+  char      passwd[255];
+  bool      auth_mode;
+  enum JsonResponseFormat     json_resp;
+};
+
+struct blockGModifyCli {
+  char      block_name[255];
+  char      volume[255];
+  char      userid[255];
+  char      passwd[255];
+  bool      auth_mode;
+  enum JsonResponseFormat     json_resp;
+};
+
 struct blockResponse {
   int       exit;       /* exit code of the command */
   string    out<>;      /* output; TODO: return respective objects */
@@ -87,7 +109,8 @@ program GLUSTER_BLOCK {
     blockResponse BLOCK_CREATE(blockCreate) = 1;
     blockResponse BLOCK_DELETE(blockDelete) = 2;
     blockResponse BLOCK_MODIFY(blockModify) = 3;
-    blockResponse BLOCK_VERSION() = 4;
+    blockResponse BLOCK_GMODIFY(blockGModify) = 4;
+    blockResponse BLOCK_VERSION() = 5;
   } = 1;
 } = 21215311; /* B2 L12 O15 C3 K11 */
 
@@ -98,5 +121,6 @@ program GLUSTER_BLOCK_CLI {
     blockResponse BLOCK_INFO_CLI(blockInfoCli) = 3;
     blockResponse BLOCK_DELETE_CLI(blockDeleteCli) = 4;
     blockResponse BLOCK_MODIFY_CLI(blockModifyCli) = 5;
+    blockResponse BLOCK_GMODIFY_CLI(blockGModifyCli) = 6;
   } = 1;
 } = 212153113; /* B2 L12 O15 C3 K11 C3 */

@@ -44,6 +44,7 @@
 # define  GB_METADIR             "/block-meta"
 # define  GB_STOREDIR            "/block-store"
 # define  GB_TXLOCKFILE          "meta.lock"
+# define  GB_VOLAUTH             "volume.auth"
 
 # define  GB_MAX_LOGFILENAME     64  /* max strlen of file name */
 
@@ -75,6 +76,7 @@
 
 /* Target Modify */
 # define  FAILED_MODIFY             "failed in modify"
+# define  FAILED_GMODIFY            "failed in gmodify"
 # define  FAILED_REMOTE_MODIFY      "failed in remote modify"
 # define  FAILED_REMOTE_AYNC_MODIFY "failed in remote async modify"
 
@@ -334,12 +336,13 @@ typedef enum gbCliCmdlineOption {
   GB_CLI_INFO           = 3,
   GB_CLI_DELETE         = 4,
   GB_CLI_MODIFY         = 5,
-  GB_CLI_HELP           = 6,
-  GB_CLI_HYPHEN_HELP    = 7,
-  GB_CLI_VERSION        = 8,
-  GB_CLI_HYPHEN_VERSION = 9,
-  GB_CLI_USAGE          = 10,
-  GB_CLI_HYPHEN_USAGE   = 11,
+  GB_CLI_GMODIFY        = 6,
+  GB_CLI_HELP           = 7,
+  GB_CLI_HYPHEN_HELP    = 8,
+  GB_CLI_VERSION        = 9,
+  GB_CLI_HYPHEN_VERSION = 10,
+  GB_CLI_USAGE          = 11,
+  GB_CLI_HYPHEN_USAGE   = 12,
 
   GB_CLI_OPT_MAX
 } gbCliCmdlineOption;
@@ -351,6 +354,7 @@ static const char *const gbCliCmdlineOptLookup[] = {
   [GB_CLI_INFO]           = "info",
   [GB_CLI_DELETE]         = "delete",
   [GB_CLI_MODIFY]         = "modify",
+  [GB_CLI_GMODIFY]        = "gmodify",
   [GB_CLI_HELP]           = "help",
   [GB_CLI_HYPHEN_HELP]    = "--help",
   [GB_CLI_VERSION]        = "version",
@@ -413,6 +417,8 @@ typedef enum Metakey {
   GB_META_ENTRYCREATE = 4,
   GB_META_ENTRYDELETE = 5,
   GB_META_PASSWD      = 6,
+  GB_META_USERID    = 7,
+  GB_META_AUTH_ENABLE = 8,
 
   GB_METAKEY_MAX
 } Metakey;
@@ -425,6 +431,8 @@ static const char *const MetakeyLookup[] = {
   [GB_META_ENTRYCREATE] = "ENTRYCREATE",
   [GB_META_ENTRYDELETE] = "ENTRYDELETE",
   [GB_META_PASSWD]      = "PASSWORD",
+  [GB_META_USERID]      = "USERID",
+  [GB_META_AUTH_ENABLE] = "AUTHENABLE",
 
   [GB_METAKEY_MAX]      = NULL
 };
