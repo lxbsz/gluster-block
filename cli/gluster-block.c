@@ -24,6 +24,8 @@
                                 "<auth enable|disable> [--json*]"
 # define  GB_REPLACE_HELP_STR "gluster-block replace <volname/blockname> "     \
                                 "<old-node> <new-node> [force] [--json*]"
+# define  GB_GMODIFY_HELP_STR "gluster-block gmodify <volname> auth "\
+                              "[enable <userid> <passwd> | disable] [--json*]\n"
 # define  GB_INFO_HELP_STR    "gluster-block info <volname/blockname> [--json*]"
 # define  GB_LIST_HELP_STR    "gluster-block list <volname> [--json*]"
 
@@ -31,6 +33,14 @@
 # define  GB_ARGCHECK_OR_RETURN(argcount, count, cmd, helpstr)        \
           do {                                                        \
             if (argcount != count) {                                  \
+              MSG("Inadequate arguments for %s:\n%s\n", cmd, helpstr);\
+              return -1;                                              \
+            }                                                         \
+          } while(0)
+
+# define  GB_ARGCHECK_OR_RETURN_2(argcount, count1, count2, cmd, helpstr)\
+          do {                                                        \
+            if (argcount != count1 && argcount != count2) {           \
               MSG("Inadequate arguments for %s:\n%s\n", cmd, helpstr);\
               return -1;                                              \
             }                                                         \
@@ -46,7 +56,8 @@ typedef enum clioperations {
   INFO_CLI   = 3,
   DELETE_CLI = 4,
   MODIFY_CLI = 5,
-  REPLACE_CLI = 6
+  REPLACE_CLI = 6,
+  GMODIFY_CLI = 7
 } clioperations;
 
 
@@ -63,6 +74,7 @@ glusterBlockCliRPC_1(void *cobj, clioperations opt)
   blockListCli *list_obj;
   blockModifyCli *modify_obj;
   blockReplaceCli *replace_obj;
+  blockGModifyCli *gmodify_obj;
   blockResponse reply = {0,};
   char          errMsg[2048] = {0};
 
@@ -158,6 +170,14 @@ glusterBlockCliRPC_1(void *cobj, clioperations opt)
       goto out;
     }
     break;
+  case GMODIFY_CLI:
+    gmodify_obj = cobj;
+    if (block_gmodify_cli_1(gmodify_obj, &reply, clnt) != RPC_SUCCESS) {
+      LOG("cli", GB_LOG_ERROR, "%sglobal modify failed",
+          clnt_sperror(clnt, "block_gmodify_cli_1"));
+      goto out;
+    }
+    break;
   }
 
  out:
@@ -220,6 +240,8 @@ glusterBlockHelp(void)
       "\n"
       "  replace <volname/blockname> <old-node> <new-node> [force]\n"
       "        replace operations.\n"
+      "  gmodify <volname> auth [enable <userid> <passwd> | disable]\n"
+      "        modify volume auth\n"
       "\n"
       "  help\n"
       "        show this message and exit.\n"
@@ -343,6 +365,51 @@ glusterBlockModify(int argcount, char **options, int json)
     LOG("cli", GB_LOG_ERROR,
         "failed getting info of block %s on volume %s",
         mobj.block_name, mobj.volume);
+  }
+
+ out:
+
+  return ret;
+}
+
+static int
+glusterBlockGModify(int argcount, char **options, int json)
+{
+  size_t optind = 2;
+  blockGModifyCli mobj = {0, };
+  int ret = -1;
+
+
+  mobj.json_resp = json;
+
+  GB_STRCPYSTATIC(mobj.volume, options[optind++]);
+
+  GB_ARGCHECK_OR_RETURN_2(argcount, 5, 7, "gmodify", GB_GMODIFY_HELP_STR);
+  if (!strcmp(options[optind], "auth")) {
+    optind++;
+
+    if (!strcmp(options[optind], "enable")) {
+      optind++;
+      mobj.auth_mode = true;
+      GB_STRCPYSTATIC(mobj.userid, options[optind++]);
+      GB_STRCPYSTATIC(mobj.passwd, options[optind]);
+    } else if (!strcmp(options[optind], "disable")) {
+      mobj.auth_mode = false;
+      mobj.userid[0] = '\0';
+      mobj.passwd[0] = '\0';
+    } else {
+      MSG("%s\n", "'auth' option is incorrect");
+      MSG("%s\n", GB_GMODIFY_HELP_STR);
+      LOG("cli", GB_LOG_ERROR, "GModify failed while parsing argument "
+                               "to auth for <%s>", options[optind]);
+      goto out;
+    }
+
+    ret = glusterBlockCliRPC_1(&mobj, GMODIFY_CLI);
+    if (ret) {
+      LOG("cli", GB_LOG_ERROR,
+          "failed to setting global auth the cluster:%d", ret);
+    }
   }
 
  out:
@@ -717,6 +784,13 @@ glusterBlockParseArgs(int count, char **options)
       ret = glusterBlockReplace(count, options, json);
       if (ret) {
         LOG("cli", GB_LOG_ERROR, "%s", FAILED_REPLACE);
+      }
+      goto out;
+
+    case GB_CLI_GMODIFY:
+      ret = glusterBlockGModify(count, options, json);
+      if (ret) {
+        LOG("cli", GB_LOG_ERROR, "%s", FAILED_GMODIFY);
       }
       goto out;
 
