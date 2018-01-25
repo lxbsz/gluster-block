@@ -205,6 +205,46 @@ glusterBlockDeleteEntry(struct glfs *glfs, char *volume, char *gbid)
 
 
 struct glfs_fd *
+glusterBlockCreateVolumeAuthMetaFile(struct glfs *glfs, char *volume, int *errCode,
+                                     char **errMsg)
+{
+  struct glfs_fd *vafd;
+  int ret;
+
+
+  ret = glfs_mkdir (glfs, GB_METADIR, 0);
+  if (ret && errno != EEXIST) {
+    *errCode = errno;
+    LOG("gfapi", GB_LOG_ERROR, "glfs_mkdir(%s) on volume %s failed[%s]",
+        GB_METADIR, volume, strerror(*errCode));
+    goto out;
+  }
+
+  ret = glfs_chdir (glfs, GB_METADIR);
+  if (ret) {
+    *errCode = errno;
+    LOG("gfapi", GB_LOG_ERROR, "glfs_chdir(%s) on volume %s failed[%s]",
+        GB_METADIR, volume, strerror(*errCode));
+    goto out;
+  }
+
+  vafd = glfs_creat(glfs, GB_VOLAUTH, O_RDWR, S_IRUSR | S_IWUSR);
+  if (!vafd) {
+    *errCode = errno;
+    LOG("gfapi", GB_LOG_ERROR, "glfs_creat(%s) on volume %s failed[%s]",
+        GB_TXLOCKFILE, volume, strerror(*errCode));
+    goto out;
+  }
+
+  return vafd;
+
+ out:
+  GB_ASPRINTF (errMsg, "Not able to create Metadata on volume %s[%s]", volume,
+               strerror (*errCode));
+  return NULL;
+}
+
+struct glfs_fd *
 glusterBlockCreateMetaLockFile(struct glfs *glfs, char *volume, int *errCode,
                                char **errMsg)
 {
@@ -294,6 +334,7 @@ blockStuffMetaInfo(MetaInfo *info, char *line)
 {
   char *tmp = strdup(line);
   char *opt = strtok(tmp, ":");
+  char *p;
   bool flag = 0;
   int  ret = -1;
   size_t i;
@@ -317,6 +358,13 @@ blockStuffMetaInfo(MetaInfo *info, char *line)
     break;
   case GB_META_PASSWD:
     strcpy(info->passwd, strchr(line, ' ')+1);
+    break;
+  case GB_META_USERNAME:
+    strcpy(info->username, strchr(line, ' ')+1);
+    break;
+  case GB_META_AUTH_ENABLE:
+    p = strchr(line, ' ') + 1;
+    info->auth_mode = !!atoi(p);
     break;
 
   default:
