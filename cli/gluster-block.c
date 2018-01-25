@@ -22,6 +22,8 @@
 # define  GB_DELETE_HELP_STR  "gluster-block delete <volname/blockname> [force] [--json*]"
 # define  GB_MODIFY_HELP_STR  "gluster-block modify <volname/blockname> "\
                                "<auth enable|disable> [--json*]"
+# define  GB_GMODIFY_HELP_STR "gluster-block gmodify auth "\
+                              "[enable <username> <password> | disable] [--json*]\n"
 # define  GB_INFO_HELP_STR    "gluster-block info <volname/blockname> [--json*]"
 # define  GB_LIST_HELP_STR    "gluster-block list <volname> [--json*]"
 
@@ -203,6 +205,9 @@ glusterBlockHelp(void)
       "\n"
       "  modify  <volname/blockname> <auth enable|disable>\n"
       "        modify block device.\n"
+      "\n"
+      "  gmodify auth [enable <username> <password> | disable]\n"
+      "        modify gluster's auth\n"
       "\n"
       "  help\n"
       "        show this message and exit.\n"
