@@ -2110,8 +2110,9 @@ block_gmodify_cli_1_svc_st(blockGModifyCli *blk, struct svc_req *rqstp)
 
 
   LOG("mgmt", GB_LOG_DEBUG,
-      "modify cli request, authmode=%s username=%s password=%d",
-      blk->auth_mode ? "enable":"disable", blk->username, blk->password);
+      "modify cli request, volume=%s, authmode=%s username=%s password=%s",
+      blk->volume, blk->auth_mode ? "enable":"disable", blk->username,
+      blk->password);
 
   if ((GB_ALLOC(reply) < 0) || (GB_ALLOC(savereply) < 0) ||
       (GB_ALLOC (info) < 0)) {
@@ -2166,7 +2167,7 @@ block_gmodify_cli_1_svc_st(blockGModifyCli *blk, struct svc_req *rqstp)
     mobj.auth_mode = 0;
   }
 
-  GB_METAUPDATE_OR_GOTO(lock, glfs, blk->block_name, blk->volume,
+  GB_METAUPDATE_OR_GOTO(lock, glfs, GB_VOLAUTH, blk->volume,
                         ret, errMsg, out, "AUTHENABLE: %u\n",
 			!!mobj.auth_mode);
 

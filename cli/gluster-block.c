@@ -342,15 +342,7 @@ glusterBlockGModify(int argcount, char **options, int json)
 
   mobj.json_resp = json;
 
-  if (!strcmp(options[optind], "volname")) {
-    strcpy(mobj.volume, options[optind++]);
-  } else {
-    MSG("%s\n", "'volname' option is incorrect");
-    MSG("%s\n", GB_GMODIFY_HELP_STR);
-    LOG("cli", GB_LOG_ERROR, "GModify failed while parsing argument "
-                               "to auth for <%s>", options[optind]);
-    goto out;
-  }
+  strcpy(mobj.volume, options[optind++]);
 
   if (!strcmp(options[optind], "auth")) {
     optind++;
