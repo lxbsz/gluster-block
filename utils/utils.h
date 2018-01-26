@@ -44,6 +44,7 @@
 # define  GB_METADIR             "/block-meta"
 # define  GB_STOREDIR            "/block-store"
 # define  GB_TXLOCKFILE          "meta.lock"
+# define  GB_VOLAUTH             "volume.auth"
 
 # define  GB_MAX_LOGFILENAME     64  /* max strlen of file name */
 
@@ -416,6 +417,8 @@ typedef enum Metakey {
   GB_META_ENTRYCREATE = 4,
   GB_META_ENTRYDELETE = 5,
   GB_META_PASSWD      = 6,
+  GB_META_USERNAME    = 7,
+  GB_META_AUTH_ENABLE = 8,
 
   GB_METAKEY_MAX
 } Metakey;
@@ -428,6 +431,8 @@ static const char *const MetakeyLookup[] = {
   [GB_META_ENTRYCREATE] = "ENTRYCREATE",
   [GB_META_ENTRYDELETE] = "ENTRYDELETE",
   [GB_META_PASSWD]      = "PASSWORD",
+  [GB_META_USERNAME]    = "USERNAME",
+  [GB_META_AUTH_ENABLE] = "AUTHENABLE",
 
   [GB_METAKEY_MAX]      = NULL
 };

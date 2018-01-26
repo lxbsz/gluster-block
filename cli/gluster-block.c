@@ -22,7 +22,7 @@
 # define  GB_DELETE_HELP_STR  "gluster-block delete <volname/blockname> [force] [--json*]"
 # define  GB_MODIFY_HELP_STR  "gluster-block modify <volname/blockname> "\
                                "<auth enable|disable> [--json*]"
-# define  GB_GMODIFY_HELP_STR "gluster-block gmodify auth "\
+# define  GB_GMODIFY_HELP_STR "gluster-block gmodify <volname> auth "\
                               "[enable <username> <password> | disable] [--json*]\n"
 # define  GB_INFO_HELP_STR    "gluster-block info <volname/blockname> [--json*]"
 # define  GB_LIST_HELP_STR    "gluster-block list <volname> [--json*]"
@@ -216,7 +216,7 @@ glusterBlockHelp(void)
       "  modify  <volname/blockname> <auth enable|disable>\n"
       "        modify block device.\n"
       "\n"
-      "  gmodify auth [enable <username> <password> | disable]\n"
+      "  gmodify <volname> auth [enable <username> <password> | disable]\n"
       "        modify gluster's auth\n"
       "\n"
       "  help\n"
@@ -342,7 +342,16 @@ glusterBlockGModify(int argcount, char **options, int json)
 
   mobj.json_resp = json;
 
-  /* if auth given then collect status which is next by 'auth' arg */
+  if (!strcmp(options[optind], "volname")) {
+    strcpy(mobj.volume, options[optind++]);
+  } else {
+    MSG("%s\n", "'volname' option is incorrect");
+    MSG("%s\n", GB_GMODIFY_HELP_STR);
+    LOG("cli", GB_LOG_ERROR, "GModify failed while parsing argument "
+                               "to auth for <%s>", options[optind]);
+    goto out;
+  }
+
   if (!strcmp(options[optind], "auth")) {
     optind++;
 
@@ -353,6 +362,8 @@ glusterBlockGModify(int argcount, char **options, int json)
       strcpy(mobj.password, options[optind]);
     } else if (!strcmp(options[optind], "disable")) {
       mobj.auth_mode = false;
+      mobj.username[0] = '\0';
+      mobj.password[0] = '\0';
     } else {
       MSG("%s\n", "'auth' option is incorrect");
       MSG("%s\n", GB_GMODIFY_HELP_STR);

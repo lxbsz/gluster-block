@@ -34,6 +34,8 @@ typedef struct MetaInfo {
   size_t mpath;
   char   entry[16];  /* possible strings for ENTRYCREATE: INPROGRESS|SUCCESS|FAIL */
   char   passwd[38];
+  char   username[38];
+  bool   auth_mode;
 
   size_t nhosts;
   NodeInfo **list;
@@ -49,6 +51,10 @@ glusterBlockCreateEntry(struct glfs *glfs, blockCreateCli *blk, char *gbid,
 
 int
 glusterBlockDeleteEntry(struct glfs *glfs, char *volume, char *gbid);
+
+struct glfs_fd *
+glusterBlockCreateVolumeAuthMetaFile(struct glfs *glfs, char *volume, int *errCode,
+                               char **errMsg);
 
 struct glfs_fd *
 glusterBlockCreateMetaLockFile(struct glfs *glfs, char *volume, int *errCode,
