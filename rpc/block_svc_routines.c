@@ -416,6 +416,7 @@ glusterBlockCallRPC_1(char *host, void *cobj,
 
   *rpc_sent = FALSE;
 
+      LOG("mgmt", GB_LOG_INFO, "lxb-----------------%d", 1);
   if (!(res = glusterBlockGetSockaddr(host))) {
     goto out;
   }
@@ -464,6 +465,7 @@ glusterBlockCallRPC_1(char *host, void *cobj,
     }
     break;
   case GMODIFY_SRV:
+      LOG("mgmt", GB_LOG_INFO, "lxb-----------------%d", 1);
     *rpc_sent = TRUE;
     if (block_gmodify_1((blockGModify *)cobj, &reply, clnt) != RPC_SUCCESS) {
       LOG("mgmt", GB_LOG_ERROR, "%son host %s",
@@ -1242,6 +1244,7 @@ glusterBlockModifyRemote(void *data)
   bool rpc_sent = FALSE;
 
 
+      LOG("mgmt", GB_LOG_INFO, "lxb-----------------%d", 1);
   GB_METAUPDATE_OR_GOTO(lock, args->glfs, cobj.block_name, cobj.volume,
                         ret, errMsg, out, "%s: AUTH%sENFORCEING\n", args->addr,
                         cobj.auth_mode?"":"CLEAR");
@@ -1299,12 +1302,15 @@ glusterBlockGModifyRemote(void *data)
   bool rpc_sent = FALSE;
 
 
+      LOG("mgmt", GB_LOG_INFO, "lxb-----------------%d", 1);
   GB_METAUPDATE_OR_GOTO(lock, args->glfs, GB_VOLAUTH, cobj.volume,
                         ret, errMsg, out, "%s: AUTH%sENFORCEING\n", args->addr,
                         cobj.auth_mode?"":"CLEAR");
 
+      LOG("mgmt", GB_LOG_INFO, "lxb---------args->addr:%s--------%d", args->addr, 1);
   ret = glusterBlockCallRPC_1(args->addr, &cobj, GMODIFY_SRV, &rpc_sent,
                               &args->reply);
+      LOG("mgmt", GB_LOG_INFO, "lxb-----------------%d", 1);
   if (ret) {
     saveret = ret;
     if (!rpc_sent) {
@@ -1390,6 +1396,28 @@ glusterBlockModifyArgsFillInternal(bool auth_mode, MetaInfo *info,
 
 
 static size_t
+glusterBlockGModifyArgsFillInternal(bool auth_mode, MetaInfo *info,
+                                    blockRemoteObj *args, struct glfs *glfs,
+				    void *mobj)
+{
+  int i = 0;
+  size_t count = 0;
+  bool fill = FALSE;
+
+
+  for (i = 0, count = 0; i < info->nhosts; i++) {
+      if (args) {
+        args[count].glfs = glfs;
+        args[count].obj = (void *)mobj;
+        args[count].addr = info->list[i]->addr;
+      }
+      count++;
+  }
+  return count;
+}
+
+
+static size_t
 glusterBlockModifyArgsFill(blockModify *mobj, MetaInfo *info,
                            blockRemoteObj *args, struct glfs *glfs)
 {
@@ -1427,8 +1455,9 @@ glusterBlockModifyRemoteAsyncInternal(MetaInfo *info,
 
   auth_mode = isgmodify ? gmobj->auth_mode:lmobj->auth_mode;
 
+      LOG("mgmt", GB_LOG_INFO, "lxb-----------------%d", 1);
   /* get all (configured - already auth enforced) node count */
-  count = glusterBlockModifyArgsFillInternal(auth_mode, info, NULL, glfs, mobj);
+  count = glusterBlockGModifyArgsFillInternal(auth_mode, info, NULL, glfs, mobj);
 
   if (GB_ALLOC_N(tid, count) < 0) {
     goto out;
@@ -1438,8 +1467,9 @@ glusterBlockModifyRemoteAsyncInternal(MetaInfo *info,
     goto out;
   }
 
-  count = glusterBlockModifyArgsFillInternal(auth_mode, info, args, glfs, mobj);
+  count = glusterBlockGModifyArgsFillInternal(auth_mode, info, args, glfs, mobj);
 
+      LOG("mgmt", GB_LOG_INFO, "lxb--------count:%d---------%d", count, 1);
   for (i = 0; i < count; i++) {
     if (isgmodify)
       pthread_create(&tid[i], NULL, glusterBlockGModifyRemote, &args[i]);
@@ -1895,12 +1925,11 @@ blockGModifyCliFormatResponse (blockGModifyCli *blk, struct blockGModify *mobj,
     }
 
     if (!errCode && mobj->auth_mode) {
-      GB_ASPRINTF(&tmp3, "IQN: %s%s\nUSERNAME: %s\nPASSWORD: %s\n%s%s",
-                  GB_TGCLI_IQN_PREFIX, info->gbid,
-                  info->gbid, mobj->password, tmp?tmp:"", tmp2?tmp2:"");
+      GB_ASPRINTF(&tmp3, "VOLUME: %s\nUSERNAME: %s\nPASSWORD: %s\n%s%s",
+                  mobj->volume, mobj->username,
+		  mobj->password, tmp?tmp:"", tmp2?tmp2:"");
     } else {
-      GB_ASPRINTF(&tmp3, "IQN: %s%s\n%s%s",
-                  GB_TGCLI_IQN_PREFIX, info->gbid,
+      GB_ASPRINTF(&tmp3, "VOLUME: %s\n%s%s", mobj->volume,
                   tmp?tmp:"", tmp2?tmp2:"");
     }
 
@@ -2107,24 +2136,29 @@ glusterBlockGetListFromInfo(MetaInfo *info)
 
 
   if (!info || GB_ALLOC(list) < 0) {
+      LOG("mgmt", GB_LOG_INFO, "lxb-----------------%d", 1);
     return NULL;
   }
 
   if (GB_ALLOC_N(list->hosts, info->mpath) < 0) {
+      LOG("mgmt", GB_LOG_INFO, "lxb-----------------%d", 1);
     goto out;
   }
 
   for (i = 0; i < info->nhosts; i++) {
     if (blockhostIsValid (info->list[i]->status)) {
       if (GB_STRDUP(list->hosts[i], info->list[i]->addr) < 0) {
+      LOG("mgmt", GB_LOG_INFO, "lxb-----------------%d", 1);
         goto out;
       }
       list->nhosts++;
     }
   }
 
+      LOG("mgmt", GB_LOG_INFO, "lxb-----------------%d", 1);
   return list;
 
+      LOG("mgmt", GB_LOG_INFO, "lxb-----------------%d", 1);
  out:
   blockServerDefFree(list);
   return NULL;
@@ -2214,6 +2248,7 @@ block_gmodify_cli_1_svc_st(blockGModifyCli *blk, struct svc_req *rqstp)
                         ret, errMsg, out, "AUTHENABLE: %u\n",
 			!!mobj.auth_mode);
 
+      LOG("mgmt", GB_LOG_INFO, "lxb-----------------%d", 1);
   asyncret = glusterBlockGModifyRemoteAsync(info, glfs, &mobj,
                                            &savereply, rollback);
   if (asyncret) {   /* asyncret decides result is success/fail */
@@ -3218,20 +3253,25 @@ block_delete_cli_1_svc_st(blockDeleteCli *blk, struct svc_req *rqstp)
       goto out;
     }
 
+      LOG("mgmt", GB_LOG_INFO, "lxb-----------------%d", 1);
     ret = glusterBlockConnectAsync(blk->block_name, info,
                                    glusterBlockDeleteFillArgs(info, true, NULL, NULL, NULL),
                                    &errMsg);
     if (ret) {
       goto out;
     }
+      LOG("mgmt", GB_LOG_INFO, "lxb-----------------%d", 1);
   }
 
+      LOG("mgmt", GB_LOG_INFO, "lxb-----------------%d", 1);
   list = glusterBlockGetListFromInfo(info);
   if (!list) {
     errCode = ENOMEM;
+      LOG("mgmt", GB_LOG_INFO, "lxb-----------------%d", 1);
     goto out;
   }
 
+      LOG("mgmt", GB_LOG_INFO, "lxb-----------------%d", 1);
   errCode = glusterBlockCheckCapabilities((void *)blk, DELETE_SRV, list, &errMsg);
   if (errCode) {
     LOG("mgmt", GB_LOG_ERROR,
@@ -3239,6 +3279,7 @@ block_delete_cli_1_svc_st(blockDeleteCli *blk, struct svc_req *rqstp)
         blk->block_name, blk->volume);
     goto out;
   }
+      LOG("mgmt", GB_LOG_INFO, "lxb-----------------%d", 1);
 
   errCode = glusterBlockCleanUp(glfs, blk->block_name, TRUE, TRUE, savereply);
   if (errCode) {
@@ -3519,6 +3560,7 @@ block_gmodify_1_svc_st(blockGModify *blk, struct svc_req *rqstp)
     goto out;
   }
 
+      LOG("mgmt", GB_LOG_INFO, "lxb-----------------%d", 1);
   glfs = glusterBlockVolumeInit(blk->volume, &errCode, &errMsg);
   if (!glfs) {
     LOG("mgmt", GB_LOG_ERROR,
@@ -3526,12 +3568,14 @@ block_gmodify_1_svc_st(blockGModify *blk, struct svc_req *rqstp)
     goto initfail;
   }
 
+      LOG("mgmt", GB_LOG_INFO, "lxb-----------------%d", 1);
   lkfd = glusterBlockCreateMetaLockFile(glfs, blk->volume, &errCode, &errMsg);
   if (!lkfd) {
     LOG("mgmt", GB_LOG_ERROR, "%s %s", FAILED_CREATING_META, blk->volume);
     goto lockfail;
   }
 
+      LOG("mgmt", GB_LOG_INFO, "lxb-----------------%d", 1);
   GB_METALOCK_OR_GOTO(lkfd, blk->volume, errCode, errMsg, lockfail);
 
   tgmdfd = glfs_opendir (glfs, GB_METADIR);
@@ -3544,6 +3588,7 @@ block_gmodify_1_svc_st(blockGModify *blk, struct svc_req *rqstp)
     goto opendirfail;
   }
 
+      LOG("mgmt", GB_LOG_INFO, "lxb-----------------%d", 1);
   while ((entry = glfs_readdir (tgmdfd))) {
     if (strcmp(entry->d_name, ".") &&
        strcmp(entry->d_name, "..") &&
@@ -3553,6 +3598,7 @@ block_gmodify_1_svc_st(blockGModify *blk, struct svc_req *rqstp)
       if (ret)
         goto metainfofail;
 
+      LOG("mgmt", GB_LOG_INFO, "lxb-----------------%s", entry->d_name);
       if (GB_ASPRINTF(&exec, GB_TGCLI_CHECK, entry->d_name, info->gbid) == -1) {
         LOG("mgmt", GB_LOG_WARNING,
             "block backend with name '%s' doesn't exist with matching gbid %s, volume '%s'",
