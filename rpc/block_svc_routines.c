@@ -778,16 +778,42 @@ glusterBlockCapabilityRemoteAsync(blockServerDef *servers, bool *minCaps,
 void *
 glusterBlockCreateRemote(void *data)
 {
-  int ret;
+  int ret, i;
   int saveret;
   blockRemoteObj *args = (blockRemoteObj *)data;
   blockCreate cobj = *(blockCreate *)args->obj;
   char *errMsg = NULL;
   bool rpc_sent = FALSE;
+  bool new = FALSE;
+  MetaInfo *info = NULL;
 
+
+  if (GB_ALLOC(info) < 0) {
+    goto out;
+  }
+
+  ret = blockGetMetaInfo(args->glfs, GB_VOLAUTH, info, NULL);
+  if (ret) {
+    blockFreeMetaInfo(info);
+    goto out;
+  } else {
+    if (!info->nhosts)
+      new = TRUE;
+
+    for (i = 0; i < info->nhosts; i++) {
+      if (strcmp(info->list[i]->addr, args->addr))
+        new = TRUE;
+    }
+    blockFreeMetaInfo(info);
+  }
 
   GB_METAUPDATE_OR_GOTO(lock, args->glfs, cobj.block_name, cobj.volume,
                         ret, errMsg, out, "%s: CONFIGINPROGRESS\n", args->addr);
+  if (new) {
+    GB_METAUPDATE_OR_GOTO(lock, args->glfs, GB_VOLAUTH, cobj.volume,
+                          ret, errMsg, out, "%s: CONFIGINPROGRESS\n",
+                          args->addr);
+  }
 
   ret = glusterBlockCallRPC_1(args->addr, &cobj, CREATE_SRV, &rpc_sent,
                               &args->reply);
@@ -806,6 +832,11 @@ glusterBlockCreateRemote(void *data)
 
     GB_METAUPDATE_OR_GOTO(lock, args->glfs, cobj.block_name, cobj.volume,
                           ret, errMsg, out, "%s: CONFIGFAIL\n", args->addr);
+    if (new) {
+      GB_METAUPDATE_OR_GOTO(lock, args->glfs, GB_VOLAUTH, cobj.volume,
+                            ret, errMsg, out, "%s: CONFIGFAIL\n",
+                            args->addr);
+    }
     LOG("mgmt", GB_LOG_ERROR, "%s for block %s on host %s volume %s",
         FAILED_REMOTE_CREATE, cobj.block_name, args->addr, args->volume);
 
@@ -815,9 +846,20 @@ glusterBlockCreateRemote(void *data)
 
   GB_METAUPDATE_OR_GOTO(lock, args->glfs, cobj.block_name, cobj.volume,
                         ret, errMsg, out, "%s: CONFIGSUCCESS\n", args->addr);
+  if (new) {
+    GB_METAUPDATE_OR_GOTO(lock, args->glfs, GB_VOLAUTH, cobj.volume,
+                          ret, errMsg, out, "%s: CONFIGSUCCESS\n",
+                          args->addr);
+  }
+
   if (cobj.auth_mode) {
     GB_METAUPDATE_OR_GOTO(lock, args->glfs, cobj.block_name, cobj.volume,
                           ret, errMsg, out, "%s: AUTHENFORCED\n", args->addr);
+    if (new) {
+      GB_METAUPDATE_OR_GOTO(lock, args->glfs, GB_VOLAUTH, cobj.volume,
+                            ret, errMsg, out, "%s: AUTHENFORCED\n",
+                            args->addr);
+    }
   }
 
  out:
@@ -1256,7 +1298,7 @@ glusterBlockGModifyRemote(void *data)
   bool rpc_sent = FALSE;
 
 
-  GB_METAUPDATE_OR_GOTO(lock, args->glfs, cobj.block_name, cobj.volume,
+  GB_METAUPDATE_OR_GOTO(lock, args->glfs, GB_VOLAUTH, cobj.volume,
                         ret, errMsg, out, "%s: AUTH%sENFORCEING\n", args->addr,
                         cobj.auth_mode?"":"CLEAR");
 
@@ -1266,26 +1308,25 @@ glusterBlockGModifyRemote(void *data)
     saveret = ret;
     if (!rpc_sent) {
       GB_ASPRINTF(&errMsg, ": %s", strerror(errno));
-      LOG("mgmt", GB_LOG_ERROR, "%s hence %s for block %s on "
-          "host %s volume %s", strerror(errno), FAILED_REMOTE_MODIFY,
-          cobj.block_name, args->addr, args->volume);
+      LOG("mgmt", GB_LOG_ERROR, "%s hence %s for volume %s on host %s",
+          strerror(errno), FAILED_REMOTE_MODIFY, args->volume, args->addr);
       goto out;
     } else if (args->reply) {
       errMsg = args->reply;
       args->reply = NULL;
     }
 
-    GB_METAUPDATE_OR_GOTO(lock, args->glfs, cobj.block_name, cobj.volume,
+    GB_METAUPDATE_OR_GOTO(lock, args->glfs, GB_VOLAUTH, cobj.volume,
                           ret, errMsg, out, "%s: AUTH%sENFORCEFAIL\n",
                           args->addr, cobj.auth_mode?"":"CLEAR");
-    LOG("mgmt", GB_LOG_ERROR, "%s for block %s on host %s volume %s",
-        FAILED_REMOTE_MODIFY, cobj.block_name, args->addr, args->volume);
+    LOG("mgmt", GB_LOG_ERROR, "%s for volume %s on host %s",
+        FAILED_REMOTE_MODIFY, args->volume, args->addr);
 
     ret = saveret;
     goto out;
   }
 
-  GB_METAUPDATE_OR_GOTO(lock, args->glfs, cobj.block_name, cobj.volume,
+  GB_METAUPDATE_OR_GOTO(lock, args->glfs, GB_VOLAUTH, cobj.volume,
                         ret, errMsg, out, "%s: AUTH%sENFORCED\n", args->addr,
                         cobj.auth_mode?"":"CLEAR");
 
@@ -2154,7 +2195,8 @@ block_gmodify_cli_1_svc_st(blockGModifyCli *blk, struct svc_req *rqstp)
 
   if (blk->auth_mode) {
     if (!strcmp(blk->username, info->username) &&
-	!strcmp(blk->password, info->passwd)) {
+	!strcmp(blk->password, info->passwd) &&
+	info->auth_mode) {
       ret = 0;
       goto out;
     }
