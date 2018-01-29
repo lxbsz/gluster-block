@@ -2878,7 +2878,6 @@ blockValidateCommandOutput(const char *out, int opt, void *data)
     break;
 
   case GMODIFY_SRV:
-    LOG("mgmt", GB_LOG_ERROR, "volume:%s, gbid:%s, block_name:%s: out:%s", gblk->volume, gblk->gbid, gblk->block_name, out);
     if (gblk->auth_mode) {
       /* authentication validation */
       GB_OUT_VALIDATE_OR_GOTO(out, out, "attribute authentication set failed "
@@ -2888,7 +2887,7 @@ blockValidateCommandOutput(const char *out, int opt, void *data)
       /* userid set validation */
       GB_OUT_VALIDATE_OR_GOTO(out, out, "userid set failed for: %s", gblk,
                       gblk->volume,
-                      "Parameter userid is now '%s'.", gblk->gbid);
+                      "Parameter userid is now '%s'.", gblk->username);
 
       /* password set validation */
       GB_OUT_VALIDATE_OR_GOTO(out, out, "password set failed for: %s", gblk,
@@ -2914,7 +2913,6 @@ blockValidateCommandOutput(const char *out, int opt, void *data)
 
   case GMODIFY_TPGC_SRV:
     /* iscsi iqn status validation */
-    LOG("mgmt", GB_LOG_ERROR, "volume:%s, gbid:%s, block_name:%s", gblk->volume, gblk->gbid, gblk->block_name);
     GB_OUT_VALIDATE_OR_GOTO(out, out, "iscsi status check failed for: %s",
                     gblk, gblk->volume,
                     "Status for /iscsi/%s%s: TPGs:", GB_TGCLI_IQN_PREFIX,
@@ -3657,7 +3655,7 @@ block_gmodify_1_svc_st(blockGModify *blk, struct svc_req *rqstp)
 
   errCode = 0;
 
-  LOG("mgmt", GB_LOG_DEBUG, "set auth success on volume=%s", blk->volume);
+  LOG("mgmt", GB_LOG_INFO, "set auth success on volume=%s", blk->volume);
  execfail:
   GB_FREE(tmp);
  authcredfail:
