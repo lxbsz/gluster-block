@@ -1440,7 +1440,6 @@ glusterBlockModifyRemoteAsyncInternal(MetaInfo *info,
 
   count = glusterBlockModifyArgsFillInternal(auth_mode, info, args, glfs, mobj);
 
-    LOG("mgmt", GB_LOG_WARNING, "lxb--------------------: count %d", count);
   for (i = 0; i < count; i++) {
     if (isgmodify)
       pthread_create(&tid[i], NULL, glusterBlockGModifyRemote, &args[i]);
@@ -3513,16 +3512,15 @@ block_gmodify_1_svc_st(blockGModify *blk, struct svc_req *rqstp)
       blk->volume, blk->auth_mode, blk->username,
       blk->auth_mode?blk->password:"");
 
-  if (GB_ALLOC(info) < 0) {
-    return NULL;
-  }
-
   if (GB_ALLOC(reply) < 0) {
-    goto out;
+    return NULL;
   }
   reply->exit = -1;
 
-  LOG("mgmt", GB_LOG_INFO, "lxb ------------------:%d", 1);
+  if (GB_ALLOC(info) < 0) {
+    goto out;
+  }
+
   glfs = glusterBlockVolumeInit(blk->volume, &errCode, &errMsg);
   if (!glfs) {
     LOG("mgmt", GB_LOG_ERROR,
@@ -3530,7 +3528,6 @@ block_gmodify_1_svc_st(blockGModify *blk, struct svc_req *rqstp)
     goto initfail;
   }
 
-  LOG("mgmt", GB_LOG_INFO, "lxb ------------------:%d", 1);
   lkfd = glusterBlockCreateMetaLockFile(glfs, blk->volume, &errCode, &errMsg);
   if (!lkfd) {
     LOG("mgmt", GB_LOG_ERROR, "%s %s", FAILED_CREATING_META, blk->volume);
@@ -3539,7 +3536,6 @@ block_gmodify_1_svc_st(blockGModify *blk, struct svc_req *rqstp)
 
   GB_METALOCK_OR_GOTO(lkfd, blk->volume, errCode, errMsg, lockfail);
 
-  LOG("mgmt", GB_LOG_INFO, "lxb ------------------:%d", 1);
   tgmdfd = glfs_opendir (glfs, GB_METADIR);
   if (!tgmdfd) {
     errCode = errno;
@@ -3550,13 +3546,11 @@ block_gmodify_1_svc_st(blockGModify *blk, struct svc_req *rqstp)
     goto opendirfail;
   }
 
-  LOG("mgmt", GB_LOG_INFO, "lxb ---------tgmdfd:%p---------:%d", tgmdfd, 1);
   while ((entry = glfs_readdir (tgmdfd))) {
     if (strcmp(entry->d_name, ".") &&
        strcmp(entry->d_name, "..") &&
        strcmp(entry->d_name, "volume.auth") &&
        strcmp(entry->d_name, "meta.lock")) {
-  LOG("mgmt", GB_LOG_INFO, "lxb ---------d_name:%s---------:%d", entry->d_name, 1);
       ret = blockGetMetaInfo(glfs, entry->d_name, info, NULL);
       if (ret)
         goto metainfofail;
@@ -3585,7 +3579,6 @@ block_gmodify_1_svc_st(blockGModify *blk, struct svc_req *rqstp)
       }
 
       if (GB_ALLOC_N(reply->out, 8192) < 0) {
-        GB_FREE(reply);
         goto runnerfail;
       }
 
@@ -3621,27 +3614,29 @@ block_gmodify_1_svc_st(blockGModify *blk, struct svc_req *rqstp)
 
           if (!tmp) {
             if (GB_ASPRINTF(&exec, "%s\n%s", authattr, authcred) == -1) {
-              goto exec1fail;
+              goto execfail;
             }
             tmp = exec;
           } else {   /* append next series of commands */
             if (GB_ASPRINTF(&exec, "%s\n%s\n%s", tmp, authattr, authcred) == -1) {
-              goto exec1fail;
+              goto execfail;
             }
             GB_FREE(tmp);
             tmp = exec;
           }
+          GB_FREE(authattr);
+          GB_FREE(authcred);
         } else {      /* unset auth */
           if (!tmp) {
             if (GB_ASPRINTF(&exec, "%s/%s%s/tpg%zu set attribute authentication=0",
                          GB_TGCLI_ISCSI_PATH, GB_TGCLI_IQN_PREFIX, info->gbid, i) == -1) {
-              goto exec2fail;
+              goto execfail;
             }
             tmp = exec;
           } else {   /* append next series of commands */
             if (GB_ASPRINTF(&exec, "%s\n%s/%s%s/tpg%zu set attribute authentication=0",
                          tmp, GB_TGCLI_ISCSI_PATH, GB_TGCLI_IQN_PREFIX, info->gbid, i) == -1) {
-              goto exec2fail;
+              goto execfail;
             }
             GB_FREE(tmp);
             tmp = exec;
@@ -3653,23 +3648,24 @@ block_gmodify_1_svc_st(blockGModify *blk, struct svc_req *rqstp)
         goto out;
       }
 
-  LOG("mgmt", GB_LOG_INFO, "lxb ------------------:exec:%s", exec);
       GB_CMD_EXEC_AND_VALIDATE(exec, reply, blk, blk->volume, GMODIFY_SRV);
       if (reply->exit) {
         snprintf(reply->out, 8192, "modify failed");
       }
-  LOG("mgmt", GB_LOG_INFO, "lxb ------------------::%d", 1);
     }
   }
 
   errCode = 0;
 
   LOG("mgmt", GB_LOG_DEBUG, "set auth success on volume=%s", blk->volume);
- exec2fail:
- exec1fail:
+ execfail:
+  GB_FREE(tmp);
  authcredfail:
+  GB_FREE(authcred);
  authattrfail:
+  GB_FREE(authattr);
  runnerfail:
+  GB_FREE(exec);
  metainfofail:
   if (tgmdfd && glfs_closedir (tgmdfd) != 0) {
     LOG("mgmt", GB_LOG_ERROR, "glfs_closedir(%s): on volume %s failed[%s]",
@@ -3684,16 +3680,8 @@ block_gmodify_1_svc_st(blockGModify *blk, struct svc_req *rqstp)
         GB_TXLOCKFILE, blk->block_name, blk->volume, strerror(errno));
   }
  initfail:
-//  GB_FREE(reply);
-
-
- out:
   GB_FREE(info);
-  GB_FREE(tmp);
-  GB_FREE(exec);
-  GB_FREE(authattr);
-  GB_FREE(authcred);
-
+ out:
   return reply;
 }
 
