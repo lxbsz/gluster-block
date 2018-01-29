@@ -48,6 +48,7 @@ typedef enum operations {
   MODIFY_SRV,
   GMODIFY_SRV,
   MODIFY_TPGC_SRV,
+  GMODIFY_TPGC_SRV,
   LIST_SRV,
   INFO_SRV,
   VERSION_SRV
@@ -1439,6 +1440,7 @@ glusterBlockModifyRemoteAsyncInternal(MetaInfo *info,
 
   count = glusterBlockModifyArgsFillInternal(auth_mode, info, args, glfs, mobj);
 
+    LOG("mgmt", GB_LOG_WARNING, "lxb--------------------: count %d", count);
   for (i = 0; i < count; i++) {
     if (isgmodify)
       pthread_create(&tid[i], NULL, glusterBlockGModifyRemote, &args[i]);
@@ -1831,7 +1833,7 @@ blockGModifyCliFormatResponse (blockGModifyCli *blk, struct blockGModify *mobj,
   }
 
   if (errMsg) {
-    blockFormatErrorResponse(MODIFY_SRV, blk->json_resp, errCode,
+    blockFormatErrorResponse(GMODIFY_SRV, blk->json_resp, errCode,
                              errMsg, reply);
     return;
   }
@@ -1924,7 +1926,7 @@ blockGModifyCliFormatResponse (blockGModifyCli *blk, struct blockGModify *mobj,
 
   /*catch all*/
   if (!reply->out) {
-    blockFormatErrorResponse(MODIFY_SRV, blk->json_resp, errCode,
+    blockFormatErrorResponse(GMODIFY_SRV, blk->json_resp, errCode,
                              GB_DEFAULT_ERRMSG, reply);
   }
 
@@ -2778,6 +2780,7 @@ blockValidateCommandOutput(const char *out, int opt, void *data)
   blockCreate *cblk = data;
   blockDelete *dblk = data;
   blockModify *mblk = data;
+  blockGModify *gblk = data;
   int ret = -1;
 
 
@@ -2875,12 +2878,48 @@ blockValidateCommandOutput(const char *out, int opt, void *data)
     ret = 0;
     break;
 
+  case GMODIFY_SRV:
+    LOG("mgmt", GB_LOG_ERROR, "volume:%s, gbid:%s, block_name:%s: out:%s", gblk->volume, gblk->gbid, gblk->block_name, out);
+    if (gblk->auth_mode) {
+      /* authentication validation */
+      GB_OUT_VALIDATE_OR_GOTO(out, out, "attribute authentication set failed "
+                      "for: %s", gblk,
+                      gblk->volume, "Parameter authentication is now '1'.");
+
+      /* userid set validation */
+      GB_OUT_VALIDATE_OR_GOTO(out, out, "userid set failed for: %s", gblk,
+                      gblk->volume,
+                      "Parameter userid is now '%s'.", gblk->gbid);
+
+      /* password set validation */
+      GB_OUT_VALIDATE_OR_GOTO(out, out, "password set failed for: %s", gblk,
+                      gblk->volume,
+                      "Parameter password is now '%s'.", gblk->password);
+    } else {
+      GB_OUT_VALIDATE_OR_GOTO(out, out, "attribute authentication unset "
+                      "failed for: %s", gblk,
+                      gblk->volume, "Parameter authentication is now '0'.");
+    }
+
+    ret = 0;
+    break;
+
   case MODIFY_TPGC_SRV:
     /* iscsi iqn status validation */
     GB_OUT_VALIDATE_OR_GOTO(out, out, "iscsi status check failed for: %s",
                     mblk, mblk->volume,
                     "Status for /iscsi/%s%s: TPGs:", GB_TGCLI_IQN_PREFIX,
                     mblk->gbid);
+    ret = 0;
+    break;
+
+  case GMODIFY_TPGC_SRV:
+    /* iscsi iqn status validation */
+    LOG("mgmt", GB_LOG_ERROR, "volume:%s, gbid:%s, block_name:%s", gblk->volume, gblk->gbid, gblk->block_name);
+    GB_OUT_VALIDATE_OR_GOTO(out, out, "iscsi status check failed for: %s",
+                    gblk, gblk->volume,
+                    "Status for /iscsi/%s%s: TPGs:", GB_TGCLI_IQN_PREFIX,
+                    gblk->gbid);
     ret = 0;
     break;
   }
@@ -3474,11 +3513,16 @@ block_gmodify_1_svc_st(blockGModify *blk, struct svc_req *rqstp)
       blk->volume, blk->auth_mode, blk->username,
       blk->auth_mode?blk->password:"");
 
-  if (GB_ALLOC(reply) < 0) {
+  if (GB_ALLOC(info) < 0) {
     return NULL;
+  }
+
+  if (GB_ALLOC(reply) < 0) {
+    goto out;
   }
   reply->exit = -1;
 
+  LOG("mgmt", GB_LOG_INFO, "lxb ------------------:%d", 1);
   glfs = glusterBlockVolumeInit(blk->volume, &errCode, &errMsg);
   if (!glfs) {
     LOG("mgmt", GB_LOG_ERROR,
@@ -3486,6 +3530,7 @@ block_gmodify_1_svc_st(blockGModify *blk, struct svc_req *rqstp)
     goto initfail;
   }
 
+  LOG("mgmt", GB_LOG_INFO, "lxb ------------------:%d", 1);
   lkfd = glusterBlockCreateMetaLockFile(glfs, blk->volume, &errCode, &errMsg);
   if (!lkfd) {
     LOG("mgmt", GB_LOG_ERROR, "%s %s", FAILED_CREATING_META, blk->volume);
@@ -3494,6 +3539,7 @@ block_gmodify_1_svc_st(blockGModify *blk, struct svc_req *rqstp)
 
   GB_METALOCK_OR_GOTO(lkfd, blk->volume, errCode, errMsg, lockfail);
 
+  LOG("mgmt", GB_LOG_INFO, "lxb ------------------:%d", 1);
   tgmdfd = glfs_opendir (glfs, GB_METADIR);
   if (!tgmdfd) {
     errCode = errno;
@@ -3504,11 +3550,13 @@ block_gmodify_1_svc_st(blockGModify *blk, struct svc_req *rqstp)
     goto opendirfail;
   }
 
+  LOG("mgmt", GB_LOG_INFO, "lxb ---------tgmdfd:%p---------:%d", tgmdfd, 1);
   while ((entry = glfs_readdir (tgmdfd))) {
     if (strcmp(entry->d_name, ".") &&
        strcmp(entry->d_name, "..") &&
        strcmp(entry->d_name, "volume.auth") &&
        strcmp(entry->d_name, "meta.lock")) {
+  LOG("mgmt", GB_LOG_INFO, "lxb ---------d_name:%s---------:%d", entry->d_name, 1);
       ret = blockGetMetaInfo(glfs, entry->d_name, info, NULL);
       if (ret)
         goto metainfofail;
@@ -3542,9 +3590,10 @@ block_gmodify_1_svc_st(blockGModify *blk, struct svc_req *rqstp)
       }
 
       strcpy(blk->block_name, entry->d_name);
+      strcpy(blk->gbid, info->gbid);
 
       /* get number of tpg's for this target */
-      GB_CMD_EXEC_AND_VALIDATE(exec, reply, &blk, blk->volume, MODIFY_TPGC_SRV);
+      GB_CMD_EXEC_AND_VALIDATE(exec, reply, blk, blk->volume, GMODIFY_TPGC_SRV);
       if (reply->exit) {
         snprintf(reply->out, 8192, "modify failed");
         goto runnerfail;
@@ -3566,7 +3615,7 @@ block_gmodify_1_svc_st(blockGModify *blk, struct svc_req *rqstp)
 
           if (GB_ASPRINTF(&authcred, "%s/%s%s/tpg%zu set auth userid=%s password=%s",
                        GB_TGCLI_ISCSI_PATH, GB_TGCLI_IQN_PREFIX, info->gbid, i,
-                       info->gbid, blk->password) == -1) {
+                       blk->username, blk->password) == -1) {
             goto authcredfail;
           }
 
@@ -3599,6 +3648,17 @@ block_gmodify_1_svc_st(blockGModify *blk, struct svc_req *rqstp)
           }
         }
       }
+
+      if (GB_ASPRINTF(&exec, "targetcli <<EOF\n%s\n%s\nEOF", tmp, GB_TGCLI_SAVE) == -1) {
+        goto out;
+      }
+
+  LOG("mgmt", GB_LOG_INFO, "lxb ------------------:exec:%s", exec);
+      GB_CMD_EXEC_AND_VALIDATE(exec, reply, blk, blk->volume, GMODIFY_SRV);
+      if (reply->exit) {
+        snprintf(reply->out, 8192, "modify failed");
+      }
+  LOG("mgmt", GB_LOG_INFO, "lxb ------------------::%d", 1);
     }
   }
 
@@ -3624,18 +3684,11 @@ block_gmodify_1_svc_st(blockGModify *blk, struct svc_req *rqstp)
         GB_TXLOCKFILE, blk->block_name, blk->volume, strerror(errno));
   }
  initfail:
-  GB_FREE(reply);
+//  GB_FREE(reply);
 
-  if (GB_ASPRINTF(&exec, "targetcli <<EOF\n%s\n%s\nEOF", tmp, GB_TGCLI_SAVE) == -1) {
-    goto out;
-  }
-
-  GB_CMD_EXEC_AND_VALIDATE(exec, reply, blk, blk->volume, MODIFY_SRV);
-  if (reply->exit) {
-    snprintf(reply->out, 8192, "modify failed");
-  }
 
  out:
+  GB_FREE(info);
   GB_FREE(tmp);
   GB_FREE(exec);
   GB_FREE(authattr);

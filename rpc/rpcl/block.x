@@ -77,6 +77,7 @@ struct blockModifyCli {
 
 struct blockGModify {
   char      block_name[255];
+  char      gbid[127];
   char      volume[255];
   char      username[255];
   char      password[255];
