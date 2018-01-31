@@ -1989,13 +1989,17 @@ blockModifyCliFormatResponse (blockModifyCli *blk, struct blockModify *mobj,
 
   if (blk->json_resp) {
     json_obj = json_object_new_object();
+    if (errCode == EPERM) {
+      json_object_object_add(json_obj, "MODIFY DISABLE FAILED", "GLOBAL AUTH IS ENABLED");
+
+    }
 
     GB_ASPRINTF(&tmp, "%s%s", GB_TGCLI_IQN_PREFIX, info->gbid);
     json_object_object_add(json_obj, "IQN",
                            GB_JSON_OBJ_TO_STR(tmp?tmp:""));
     if (!errCode && mobj->auth_mode) {
       json_object_object_add(json_obj, "USERNAME",
-                             GB_JSON_OBJ_TO_STR(info->gbid));
+                             GB_JSON_OBJ_TO_STR(mobj->g_auth?mobj->username:info->gbid));
       json_object_object_add(json_obj, "PASSWORD",
                              GB_JSON_OBJ_TO_STR(mobj->passwd));
     }
@@ -2047,7 +2051,8 @@ blockModifyCliFormatResponse (blockModifyCli *blk, struct blockModify *mobj,
     if (!errCode && mobj->auth_mode) {
       GB_ASPRINTF(&tmp3, "IQN: %s%s\nUSERNAME: %s\nPASSWORD: %s\n%s%s",
                   GB_TGCLI_IQN_PREFIX, info->gbid,
-                  info->gbid, mobj->passwd, tmp?tmp:"", tmp2?tmp2:"");
+                  mobj->g_auth?mobj->username:info->gbid, mobj->passwd,
+		  tmp?tmp:"", tmp2?tmp2:"");
     } else {
       GB_ASPRINTF(&tmp3, "IQN: %s%s\n%s%s",
                   GB_TGCLI_IQN_PREFIX, info->gbid,
@@ -2368,6 +2373,21 @@ block_modify_cli_1_svc_st(blockModifyCli *blk, struct svc_req *rqstp)
 
   GB_METALOCK_OR_GOTO(lkfd, blk->volume, ret, errMsg, nolock);
 
+  if (!glfs_access(glfs, GB_VOLAUTH, F_OK)) {
+    ret = blockGetMetaInfo(glfs, GB_VOLAUTH, info, NULL);
+    if (ret) {
+      goto out;
+    }
+    strcpy(mobj.username, info->username);
+    strcpy(mobj.passwd, info->passwd);
+    mobj.g_auth = true;
+  }
+
+  if (mobj.g_auth && !blk->auth_mode) {
+    errCode = EPERM;
+    goto out;
+  }
+
   if (glfs_access(glfs, blk->block_name, F_OK)) {
     LOG("mgmt", GB_LOG_ERROR,
         "block with name %s doesn't exist in the volume %s",
@@ -2402,14 +2422,20 @@ block_modify_cli_1_svc_st(blockModifyCli *blk, struct svc_req *rqstp)
   strcpy(mobj.gbid, info->gbid);
 
   if (blk->auth_mode) {
-    if(info->passwd[0] == '\0') {
-      uuid_generate(uuid);
-      uuid_unparse(uuid, passwd);
-      GB_METAUPDATE_OR_GOTO(lock, glfs, blk->block_name, blk->volume,
-                            ret, errMsg, out, "PASSWORD: %s\n", passwd);
-      strcpy(mobj.passwd, passwd);
+    if(!mobj.g_auth) {
+      if(info->passwd[0] == '\0') {
+        uuid_generate(uuid);
+        uuid_unparse(uuid, passwd);
+        GB_METAUPDATE_OR_GOTO(lock, glfs, blk->block_name, blk->volume,
+                              ret, errMsg, out, "PASSWORD: %s\n", passwd);
+        strcpy(mobj.passwd, passwd);
+      } else {
+        strcpy(mobj.passwd, info->passwd);
+      }
     } else {
-      strcpy(mobj.passwd, info->passwd);
+      GB_METAUPDATE_OR_GOTO(lock, glfs, blk->block_name, blk->volume,
+                            ret, errMsg, out, "USERNAME: %s\nPASSWORD: %s\n",
+			    mobj.username, mobj.passwd);
     }
     mobj.auth_mode = 1;
   } else {
@@ -2418,8 +2444,10 @@ block_modify_cli_1_svc_st(blockModifyCli *blk, struct svc_req *rqstp)
     mobj.auth_mode = 0;
   }
 
+      LOG("mgmt", GB_LOG_INFO, "lxb-----------------%d", 1);
   asyncret = glusterBlockModifyRemoteAsync(info, glfs, &mobj,
                                            &savereply, rollback);
+      LOG("mgmt", GB_LOG_INFO, "lxb-----------------%d", 1);
   if (asyncret) {   /* asyncret decides result is success/fail */
     errCode = asyncret;
     LOG("mgmt", GB_LOG_WARNING,
@@ -2903,7 +2931,7 @@ blockValidateCommandOutput(const char *out, int opt, void *data)
       /* userid set validation */
       GB_OUT_VALIDATE_OR_GOTO(out, out, "userid set failed for: %s", mblk,
                       mblk->volume,
-                      "Parameter userid is now '%s'.", mblk->gbid);
+                      "Parameter userid is now '%s'.", mblk->g_auth?mblk->username:mblk->gbid);
 
       /* password set validation */
       GB_OUT_VALIDATE_OR_GOTO(out, out, "password set failed for: %s", mblk,
@@ -3480,9 +3508,10 @@ block_modify_1_svc_st(blockModify *blk, struct svc_req *rqstp)
 
       if (GB_ASPRINTF(&authcred, "%s/%s%s/tpg%zu set auth userid=%s password=%s",
                    GB_TGCLI_ISCSI_PATH, GB_TGCLI_IQN_PREFIX, blk->gbid, i,
-                   blk->gbid, blk->passwd) == -1) {
+                   blk->g_auth?blk->username:blk->gbid, blk->passwd) == -1) {
         goto out;
       }
+      LOG("mgmt", GB_LOG_INFO, "lxb------------authcred:%s-----%d", authcred, 1);
 
       if (!tmp) {
         if (GB_ASPRINTF(&exec, "%s\n%s", authattr, authcred) == -1) {

@@ -29,8 +29,10 @@ struct blockModify {
   char      volume[255];
   char      block_name[255];
   char      gbid[127];
+  char      username[127];
   char      passwd[127];
   bool      auth_mode;
+  bool      g_auth;
 };
 
 struct blockCreateCli {
