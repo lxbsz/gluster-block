@@ -1991,7 +1991,6 @@ blockModifyCliFormatResponse (blockModifyCli *blk, struct blockModify *mobj,
     json_obj = json_object_new_object();
     if (errCode == EPERM) {
       json_object_object_add(json_obj, "MODIFY DISABLE FAILED", "GLOBAL AUTH IS ENABLED");
-
     }
 
     GB_ASPRINTF(&tmp, "%s%s", GB_TGCLI_IQN_PREFIX, info->gbid);
@@ -2380,10 +2379,12 @@ block_modify_cli_1_svc_st(blockModifyCli *blk, struct svc_req *rqstp)
     }
     strcpy(mobj.username, info->username);
     strcpy(mobj.passwd, info->passwd);
-    mobj.g_auth = true;
+    mobj.g_auth = info->auth_mode;
   }
 
   if (mobj.g_auth && !blk->auth_mode) {
+    GB_ASPRINTF(&errMsg, "Disabling %s auth is not permitted, because the volume auth is still enabled!",
+		blk->volume, blk->block_name);
     errCode = EPERM;
     goto out;
   }
@@ -2444,10 +2445,8 @@ block_modify_cli_1_svc_st(blockModifyCli *blk, struct svc_req *rqstp)
     mobj.auth_mode = 0;
   }
 
-      LOG("mgmt", GB_LOG_INFO, "lxb-----------------%d", 1);
   asyncret = glusterBlockModifyRemoteAsync(info, glfs, &mobj,
                                            &savereply, rollback);
-      LOG("mgmt", GB_LOG_INFO, "lxb-----------------%d", 1);
   if (asyncret) {   /* asyncret decides result is success/fail */
     errCode = asyncret;
     LOG("mgmt", GB_LOG_WARNING,

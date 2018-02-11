@@ -36,6 +36,14 @@
             }                                                         \
           } while(0)
 
+# define  GB_ARGCHECK_OR_RETURN_2(argcount, count1, count2, cmd, helpstr)\
+          do {                                                        \
+            if (argcount != count1 && argcount != count2) {           \
+              MSG("Inadequate arguments for %s:\n%s\n", cmd, helpstr);\
+              return -1;                                              \
+            }                                                         \
+          } while(0)
+
 # define  GB_DEFAULT_SECTOR_SIZE  512
 
 extern const char *argp_program_version;
@@ -344,6 +352,7 @@ glusterBlockGModify(int argcount, char **options, int json)
 
   strcpy(mobj.volume, options[optind++]);
 
+  GB_ARGCHECK_OR_RETURN_2(argcount, 5, 7, "gmodify", GB_GMODIFY_HELP_STR);
   if (!strcmp(options[optind], "auth")) {
     optind++;
 
