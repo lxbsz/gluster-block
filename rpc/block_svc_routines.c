@@ -2662,7 +2662,7 @@ block_create_cli_1_svc_st(blockCreateCli *blk, struct svc_req *rqstp)
   struct blockCreate cobj = {0};
   struct blockResponse *reply;
   struct glfs *glfs = NULL;
-  struct glfs_fd *lkfd = NULL;
+  struct glfs_fd *lkfd = NULL, *vafd = NULL;
   blockServerDefPtr list = NULL;
   char *errMsg = NULL;
 
@@ -2766,6 +2766,12 @@ block_create_cli_1_svc_st(blockCreateCli *blk, struct svc_req *rqstp)
 
     GB_METAUPDATE_OR_GOTO(lock, glfs, blk->block_name, blk->volume,
                           errCode, errMsg, exist, "PASSWORD: %s\n", passwd);
+  }
+
+  vafd = glusterBlockCreateVolumeAuthMetaFile(glfs, blk->volume, &errCode, &errMsg);
+  if (!vafd) {
+    LOG("mgmt", GB_LOG_ERROR, "%s %s", FAILED_CREATING_META, blk->volume);
+    goto exist;
   }
 
   errCode = glusterBlockCreateRemoteAsync(list, 0, blk->mpath,
