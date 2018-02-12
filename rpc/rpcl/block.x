@@ -18,6 +18,7 @@ struct blockCreate {
   char      ipaddr[255];
   char      volume[255];
   char      gbid[127];                   /* uuid */
+  char      username[127];
   char      passwd[127];                 /* uuid */
   u_quad_t  size;
   char      block_name[255];

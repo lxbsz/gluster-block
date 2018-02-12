@@ -206,7 +206,7 @@ glusterBlockDeleteEntry(struct glfs *glfs, char *volume, char *gbid)
 
 struct glfs_fd *
 glusterBlockCreateVolumeAuthMetaFile(struct glfs *glfs, char *volume, int *errCode,
-                               char **errMsg)
+                                     char **errMsg)
 {
   struct glfs_fd *vafd;
   int ret;

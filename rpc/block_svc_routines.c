@@ -416,7 +416,6 @@ glusterBlockCallRPC_1(char *host, void *cobj,
 
   *rpc_sent = FALSE;
 
-      LOG("mgmt", GB_LOG_INFO, "lxb-----------------%d", 1);
   if (!(res = glusterBlockGetSockaddr(host))) {
     goto out;
   }
@@ -2683,6 +2682,7 @@ block_create_cli_1_svc_st(blockCreateCli *blk, struct svc_req *rqstp)
 {
   int errCode = -1;
   uuid_t uuid;
+  MetaInfo *info = NULL;
   blockRemoteCreateResp *savereply = NULL;
   char gbid[UUID_BUF_SIZE];
   char passwd[UUID_BUF_SIZE];
@@ -2692,14 +2692,17 @@ block_create_cli_1_svc_st(blockCreateCli *blk, struct svc_req *rqstp)
   struct glfs_fd *lkfd = NULL, *vafd = NULL;
   blockServerDefPtr list = NULL;
   char *errMsg = NULL;
+  int ret;
 
 
-  LOG("mgmt", GB_LOG_INFO,
+  LOG("mgmt", GB_LOG_ERROR,
       "create cli request, volume=%s blockname=%s mpath=%d blockhosts=%s "
       "authmode=%d size=%lu", blk->volume, blk->block_name, blk->mpath,
       blk->block_hosts, blk->auth_mode, blk->size);
 
-  if (GB_ALLOC(reply) < 0) {
+  if (GB_ALLOC(reply) < 0 || (GB_ALLOC(info) < 0)) {
+    GB_FREE(reply);
+    GB_FREE(info);
     return NULL;
   }
 
@@ -2784,21 +2787,35 @@ block_create_cli_1_svc_st(blockCreateCli *blk, struct svc_req *rqstp)
     goto exist;
   }
 
-  if (blk->auth_mode) {
-    uuid_generate(uuid);
-    uuid_unparse(uuid, passwd);
-
-    strcpy(cobj.passwd, passwd);
-    cobj.auth_mode = 1;
-
-    GB_METAUPDATE_OR_GOTO(lock, glfs, blk->block_name, blk->volume,
-                          errCode, errMsg, exist, "PASSWORD: %s\n", passwd);
-  }
-
   vafd = glusterBlockCreateVolumeAuthMetaFile(glfs, blk->volume, &errCode, &errMsg);
   if (!vafd) {
     LOG("mgmt", GB_LOG_ERROR, "%s %s", FAILED_CREATING_META, blk->volume);
     goto exist;
+  }
+
+  ret = blockGetMetaInfo(glfs, GB_VOLAUTH, info, NULL);
+  if (ret) {
+    goto exist;
+  }
+
+  if (info->auth_mode) {
+    strcpy(cobj.username, info->username);
+    strcpy(cobj.passwd, info->passwd);
+    cobj.auth_mode = 1;
+  } else if (blk->auth_mode) {
+    uuid_generate(uuid);
+    uuid_unparse(uuid, passwd);
+
+    strcpy(cobj.username, cobj.gbid);
+    strcpy(cobj.passwd, passwd);
+    cobj.auth_mode = 1;
+  }
+
+    LOG("mgmt", GB_LOG_ERROR, "info->auth_mode:%d cobj->auth_mode:%d", info->auth_mode, cobj.auth_mode);
+  if (cobj.auth_mode) {
+    GB_METAUPDATE_OR_GOTO(lock, glfs, blk->block_name, blk->volume, errCode,
+		          errMsg, exist, "USERNAME: %s\nPASSWORD: %s\n",
+			  cobj.username, cobj.passwd);
   }
 
   errCode = glusterBlockCreateRemoteAsync(list, 0, blk->mpath,
@@ -2836,6 +2853,7 @@ block_create_cli_1_svc_st(blockCreateCli *blk, struct svc_req *rqstp)
   blockServerDefFree(list);
   blockCreateParsedRespFree(savereply);
   GB_FREE (cobj.block_hosts);
+  GB_FREE(info);
 
   return reply;
 }
@@ -2897,7 +2915,7 @@ blockValidateCommandOutput(const char *out, int opt, void *data)
       /* userid set validation */
       GB_OUT_VALIDATE_OR_GOTO(out, out, "userid set failed for: %s", cblk,
                       cblk->volume,
-                      "Parameter userid is now '%s'.", cblk->gbid);
+                      "Parameter userid is now '%s'.", cblk->username);
 
       /* password set validation */
       GB_OUT_VALIDATE_OR_GOTO(out, out, "password set failed for: %s", cblk,
@@ -3014,8 +3032,9 @@ block_create_1_svc_st(blockCreate *blk, struct svc_req *rqstp)
 
   LOG("mgmt", GB_LOG_INFO,
       "create request, volume=%s blockname=%s blockhosts=%s filename=%s authmode=%d "
-      "passwd=%s size=%lu", blk->volume, blk->block_name, blk->block_hosts,
-      blk->gbid, blk->auth_mode, blk->auth_mode?blk->passwd:"", blk->size);
+      "username=%s passwd=%s size=%lu", blk->volume, blk->block_name, blk->block_hosts,
+      blk->gbid, blk->auth_mode, blk->auth_mode?blk->username:"",
+      blk->auth_mode?blk->passwd:"", blk->size);
 
   if (GB_ALLOC(reply) < 0) {
     goto out;
@@ -3092,10 +3111,12 @@ block_create_1_svc_st(blockCreate *blk, struct svc_req *rqstp)
       }
     }
 
+    LOG("mgmt", GB_LOG_ERROR,
+        "lxb-------------------------------------------ddddddddd, %d", blk->auth_mode);
     if (blk->auth_mode &&
         GB_ASPRINTF(&authcred, "\n%s/%s%s/tpg%zu set auth userid=%s password=%s",
           GB_TGCLI_ISCSI_PATH, GB_TGCLI_IQN_PREFIX, blk->gbid, i,
-          blk->gbid, blk->passwd) == -1) {
+          blk->username, blk->passwd) == -1) {
       goto out;
     }
     if (!tmp) {
