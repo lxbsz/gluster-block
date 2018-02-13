@@ -2174,6 +2174,8 @@ block_gmodify_cli_1_svc_st(blockGModifyCli *blk, struct svc_req *rqstp)
   char *errMsg = NULL;
   blockServerDefPtr list = NULL;
   size_t i;
+  struct glfs_fd *tgmdfd = NULL;
+  struct dirent *entry;
 
 
   LOG("mgmt", GB_LOG_DEBUG,
@@ -2280,7 +2282,33 @@ block_gmodify_cli_1_svc_st(blockGModifyCli *blk, struct svc_req *rqstp)
     }
   }
 
-  ret = 0;
+  tgmdfd = glfs_opendir (glfs, GB_METADIR);
+  if (!tgmdfd) {
+    errCode = errno;
+    GB_ASPRINTF (&errMsg, "Not able to open metadata directory for volume "
+                 "%s[%s]", blk->volume, strerror(errCode));
+    LOG("mgmt", GB_LOG_ERROR, "glfs_opendir(%s): on volume %s failed[%s]",
+        GB_METADIR, blk->volume, strerror(errno));
+    goto out;
+  }
+
+  while ((entry = glfs_readdir (tgmdfd))) {
+    if (strcmp(entry->d_name, ".") &&
+       strcmp(entry->d_name, "..") &&
+       strcmp(entry->d_name, "volume.auth") &&
+       strcmp(entry->d_name, "meta.lock")) {
+
+      GB_METAUPDATE_OR_GOTO(lock, glfs, entry->d_name, blk->volume, ret, errMsg,
+                            out, "USERNAME: %s\nPASSWORD: %s\n",
+                            mobj.username, mobj.password);
+
+    }
+  }
+
+  if (tgmdfd && glfs_close(tgmdfd) != 0) {
+    LOG("mgmt", GB_LOG_ERROR, "glfs_close(%s): on volume %s failed[%s]",
+        GB_TXLOCKFILE, mobj.volume, strerror(errno));
+  }
 
  out:
   GB_METAUNLOCK(lkfd, blk->volume, ret, errMsg);
