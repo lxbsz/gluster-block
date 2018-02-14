@@ -23,7 +23,7 @@
 # define  GB_MODIFY_HELP_STR  "gluster-block modify <volname/blockname> "\
                                "<auth enable|disable> [--json*]"
 # define  GB_GMODIFY_HELP_STR "gluster-block gmodify <volname> auth "\
-                              "[enable <username> <password> | disable] [--json*]\n"
+                              "[enable <userid> <passwd> | disable] [--json*]\n"
 # define  GB_INFO_HELP_STR    "gluster-block info <volname/blockname> [--json*]"
 # define  GB_LIST_HELP_STR    "gluster-block list <volname> [--json*]"
 
@@ -224,7 +224,7 @@ glusterBlockHelp(void)
       "  modify  <volname/blockname> <auth enable|disable>\n"
       "        modify block device.\n"
       "\n"
-      "  gmodify <volname> auth [enable <username> <password> | disable]\n"
+      "  gmodify <volname> auth [enable <userid> <passwd> | disable]\n"
       "        modify gluster's auth\n"
       "\n"
       "  help\n"
@@ -359,12 +359,12 @@ glusterBlockGModify(int argcount, char **options, int json)
     if (!strcmp(options[optind], "enable")) {
       optind++;
       mobj.auth_mode = true;
-      strcpy(mobj.username, options[optind++]);
-      strcpy(mobj.password, options[optind]);
+      strcpy(mobj.userid, options[optind++]);
+      strcpy(mobj.passwd, options[optind]);
     } else if (!strcmp(options[optind], "disable")) {
       mobj.auth_mode = false;
-      mobj.username[0] = '\0';
-      mobj.password[0] = '\0';
+      mobj.userid[0] = '\0';
+      mobj.passwd[0] = '\0';
     } else {
       MSG("%s\n", "'auth' option is incorrect");
       MSG("%s\n", GB_GMODIFY_HELP_STR);

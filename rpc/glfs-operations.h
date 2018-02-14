@@ -34,7 +34,7 @@ typedef struct MetaInfo {
   size_t mpath;
   char   entry[16];  /* possible strings for ENTRYCREATE: INPROGRESS|SUCCESS|FAIL */
   char   passwd[38];
-  char   username[38];
+  char   userid[38];
   bool   auth_mode;
 
   size_t nhosts;

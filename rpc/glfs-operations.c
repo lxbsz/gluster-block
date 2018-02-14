@@ -359,8 +359,8 @@ blockStuffMetaInfo(MetaInfo *info, char *line)
   case GB_META_PASSWD:
     strcpy(info->passwd, strchr(line, ' ')+1);
     break;
-  case GB_META_USERNAME:
-    strcpy(info->username, strchr(line, ' ')+1);
+  case GB_META_USERID:
+    strcpy(info->userid, strchr(line, ' ')+1);
     break;
   case GB_META_AUTH_ENABLE:
     p = strchr(line, ' ') + 1;

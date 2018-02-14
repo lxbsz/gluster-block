@@ -18,7 +18,7 @@ struct blockCreate {
   char      ipaddr[255];
   char      volume[255];
   char      gbid[127];                   /* uuid */
-  char      username[127];
+  char      userid[127];
   char      passwd[127];                 /* uuid */
   u_quad_t  size;
   char      block_name[255];
@@ -30,7 +30,7 @@ struct blockModify {
   char      volume[255];
   char      block_name[255];
   char      gbid[127];
-  char      username[127];
+  char      userid[127];
   char      passwd[127];
   bool      auth_mode;
   bool      g_auth;
@@ -82,8 +82,8 @@ struct blockGModify {
   char      block_name[255];
   char      gbid[127];
   char      volume[255];
-  char      username[255];
-  char      password[255];
+  char      userid[255];
+  char      passwd[255];
   bool      auth_mode;
   enum JsonResponseFormat     json_resp;
 };
@@ -91,8 +91,8 @@ struct blockGModify {
 struct blockGModifyCli {
   char      block_name[255];
   char      volume[255];
-  char      username[255];
-  char      password[255];
+  char      userid[255];
+  char      passwd[255];
   bool      auth_mode;
   enum JsonResponseFormat     json_resp;
 };
