@@ -2930,6 +2930,7 @@ block_create_cli_1_svc_st(blockCreateCli *blk, struct svc_req *rqstp)
   blockRemoteCreateResp *savereply = NULL;
   char gbid[UUID_BUF_SIZE];
   char passwd[UUID_BUF_SIZE];
+  char rbsize[16];
   struct blockCreate cobj = {0};
   struct blockResponse *reply;
   struct glfs *glfs = NULL;
@@ -2938,10 +2939,15 @@ block_create_cli_1_svc_st(blockCreateCli *blk, struct svc_req *rqstp)
   char *errMsg = NULL;
 
 
+  if (blk->rb_size)
+    snprintf(rbsize, 16, "%dMB", blk->rb_size);
+  else
+    snprintf(rbsize, 16, "default");
+
   LOG("mgmt", GB_LOG_INFO,
       "create cli request, volume=%s blockname=%s mpath=%d blockhosts=%s "
-      "authmode=%d size=%lu", blk->volume, blk->block_name, blk->mpath,
-      blk->block_hosts, blk->auth_mode, blk->size);
+      "authmode=%d size=%lu, rb_size=%s", blk->volume, blk->block_name, blk->mpath,
+      blk->block_hosts, blk->auth_mode, blk->size, rbsize);
 
   if (GB_ALLOC(reply) < 0) {
     return NULL;
@@ -3017,11 +3023,14 @@ block_create_cli_1_svc_st(blockCreateCli *blk, struct svc_req *rqstp)
   }
 
   GB_METAUPDATE_OR_GOTO(lock, glfs, blk->block_name, blk->volume,
-                        errCode, errMsg, exist, "SIZE: %zu\nENTRYCREATE: SUCCESS\n", blk->size);
+                        errCode, errMsg, exist,
+                        "SIZE: %zu\nRB_SIZE: %s\nENTRYCREATE: SUCCESS\n",
+                        blk->size, rbsize);
 
   GB_STRCPYSTATIC(cobj.volume, blk->volume);
   GB_STRCPYSTATIC(cobj.block_name, blk->block_name);
   cobj.size = blk->size;
+  cobj.rb_size = blk->rb_size;
   GB_STRCPYSTATIC(cobj.gbid, gbid);
   if (GB_STRDUP(cobj.block_hosts,  blk->block_hosts) < 0) {
     errCode = ENOMEM;
@@ -3296,6 +3305,7 @@ blockResponse *
 block_create_1_svc_st(blockCreate *blk, struct svc_req *rqstp)
 {
   char *tmp = NULL;
+  char *rbsize= NULL;
   char *backstore = NULL;
   char *backstore_attr = NULL;
   char *iqn = NULL;
@@ -3320,9 +3330,16 @@ block_create_1_svc_st(blockCreate *blk, struct svc_req *rqstp)
   }
   reply->exit = -1;
 
-  if (GB_ASPRINTF(&backstore, "%s %s %s %zu %s@%s%s/%s %s", GB_TGCLI_GLFS_PATH,
+  if (blk->rb_size) {
+    if (GB_ASPRINTF(&rbsize, ",max_data_area_mb=%d", blk->rb_size) == -1) {
+      goto out;
+    }
+  }
+
+  if (GB_ASPRINTF(&backstore, "%s %s %s %zu %s@%s%s/%s%s %s", GB_TGCLI_GLFS_PATH,
                   GB_CREATE, blk->block_name, blk->size, blk->volume,
-                  blk->ipaddr, GB_STOREDIR, blk->gbid, blk->gbid) == -1) {
+                  blk->ipaddr, GB_STOREDIR, blk->gbid, rbsize ? rbsize: "",
+                  blk->gbid) == -1) {
     goto out;
   }
 
@@ -3443,6 +3460,7 @@ block_create_1_svc_st(blockCreate *blk, struct svc_req *rqstp)
   GB_FREE(tpg);
   GB_FREE(iqn);
   GB_FREE(backstore);
+  GB_FREE(rbsize);
   GB_FREE(backstore_attr);
   blockServerDefFree(list);
 

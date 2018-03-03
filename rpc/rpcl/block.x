@@ -20,6 +20,7 @@ struct blockCreate {
   char      gbid[127];                   /* uuid */
   char      passwd[127];                 /* uuid */
   u_quad_t  size;
+  u_int     rb_size;              /* TCMU Ring Buffer size in kernel */
   char      block_name[255];
   string    block_hosts<>;               /* for multiple tpg's creation */
   bool      auth_mode;
@@ -44,6 +45,7 @@ struct blockReplace {
 struct blockCreateCli {
   char      volume[255];
   u_quad_t  size;
+  u_int     rb_size;              /* TCMU Ring Buffer size in kernel */
   u_int     mpath;                /* HA request count */
   bool      auth_mode;
   bool      prealloc;

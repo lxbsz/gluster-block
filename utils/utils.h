@@ -380,6 +380,7 @@ typedef enum gbCliCreateOptions {
   GB_CLI_CREATE_AUTH      = 2,
   GB_CLI_CREATE_PREALLOC  = 3,
   GB_CLI_CREATE_STORAGE   = 4,
+  GB_CLI_CREATE_RB_SIZE   = 5,
 
   GB_CLI_CREATE_OPT_MAX
 } gbCliCreateOptions;
@@ -390,6 +391,7 @@ static const char *const gbCliCreateOptLookup[] = {
   [GB_CLI_CREATE_AUTH]     = "auth",
   [GB_CLI_CREATE_PREALLOC] = "prealloc",
   [GB_CLI_CREATE_STORAGE]  = "storage",
+  [GB_CLI_CREATE_RB_SIZE]  = "rb_size",
 
   [GB_CLI_CREATE_OPT_MAX]  = NULL,
 };
