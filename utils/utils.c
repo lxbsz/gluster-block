@@ -30,6 +30,18 @@ const char *argp_program_version = ""                                 \
 
 
 int
+glusterBlockSetLogLevel(unsigned int logLevel)
+{
+      if (logLevel >= GB_LOG_MAX) {
+        MSG("unknown LOG-LEVEL: '%d'\n", logLevel);
+        return -1;
+      }
+      gbConf.logLevel = logLevel;
+
+      return 0;
+}
+
+int
 glusterBlockCLIOptEnumParse(const char *opt)
 {
   int i;
@@ -244,6 +256,8 @@ initLogging(void)
            "%s/gluster-block-gfapi.log", logDir);
   snprintf(gbConf.configShellLogFile, PATH_MAX,
            "%s/gluster-block-configshell.log", logDir);
+  snprintf(gbConf.generalLogFile, PATH_MAX,
+           "%s/gluster-block-genernal.log", logDir);
 
   if(!glusterBlockLogdirCreate()) {
     return EXIT_FAILURE;

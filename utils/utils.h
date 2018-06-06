@@ -26,6 +26,8 @@
 # include  <sys/time.h>
 # include  <ctype.h>
 
+#include  "list.h"
+
 # define  GB_LOGDIR              DATADIR "/log/gluster-block"
 # define  GB_INFODIR             DATADIR "/run"
 
@@ -126,11 +128,12 @@
 
 
 struct gbConf {
-  int  logLevel;
+  unsigned int logLevel;
   char logDir[PATH_MAX];
   char daemonLogFile[PATH_MAX];
   char cliLogFile[PATH_MAX];
   char gfapiLogFile[PATH_MAX];
+  char generalLogFile[PATH_MAX];
   char configShellLogFile[PATH_MAX];
 };
 
@@ -147,6 +150,8 @@ extern struct gbConf gbConf;
                 fd = fopen (gbConf.cliLogFile, "a");                   \
               else if (!strcmp(str, "gfapi"))                          \
                 fd = fopen (gbConf.gfapiLogFile, "a");                 \
+              else if (!strcmp(str, "general"))                          \
+                fd = fopen (gbConf.generalLogFile, "a");                 \
               else                                                     \
                 fd = stderr;                                           \
               if (fd == NULL) {                                        \
@@ -547,6 +552,34 @@ static const char *const RemoteCreateRespLookup[] = {
   [GB_REMOTE_CREATE_RESP_MAX] = NULL,
 };
 
+struct gb_config {
+	pthread_t thread_id;
+	char *path;
+
+	bool is_dynamic;
+	char *GB_LOG_LEVEL;
+};
+
+/*
+ * There are 5 logging levels supported in gluster-blockd.conf:
+ *    1: GB_LOG_ERROR
+ *    2: GB_LOG_WARNING
+ *    3: GB_LOG_INFO
+ *    4: GB_LOG_DEBUG
+ *    5: GB_LOG_TRACE
+ */
+
+enum {
+	GB_CONF_LOG_LEVEL_MIN = 1,
+	GB_CONF_LOG_ERROR = 1,
+	GB_CONF_LOG_WARN,
+	GB_CONF_LOG_INFO,
+	GB_CONF_LOG_DEBUG,
+	GB_CONF_LOG_DEBUG_SCSI_CMD,
+	GB_CONF_LOG_LEVEL_MAX = GB_CONF_LOG_DEBUG_SCSI_CMD,
+};
+
+int glusterBlockSetLogLevel(unsigned int logLevel);
 
 int glusterBlockCLIOptEnumParse(const char *opt);
 
@@ -586,5 +619,9 @@ char* gbStrcpy(char *dest, const char *src, size_t destbytes,
                const char *filename, const char *funcname, size_t linenr);
 
 void gbFree(void *ptrptr);
+
+void glusterBlockDestroyConfig(struct gb_config *cfg);
+
+struct gb_config *glusterBlockSetupConfig(const char *path);
 
 #endif  /* _UTILS_H */
