@@ -8,12 +8,14 @@
   cases as published by the Free Software Foundation.
 */
 
+# include  <pthread.h>
 # include "lru.h"
 # include "utils.h"
 
 
-static struct list_head Cache;
+static LIST_HEAD(Cache);
 static int lruCount;
+static pthread_mutex_t lru_lock = PTHREAD_MUTEX_INITIALIZER;
 
 typedef struct Entry {
   char volume[255];
@@ -21,6 +23,31 @@ typedef struct Entry {
 
   struct list_head list;
 } Entry;
+
+
+void
+glusterBlockUpdateLruLogdir(const char *logPath)
+{
+  struct list_head *pos, *q;
+  Entry *tmp;
+
+
+  LOCK(lru_lock);
+  if (!logPath || list_empty(&Cache)) {
+      UNLOCK(lru_lock);
+      return;
+  }
+
+  list_for_each_safe(pos, q, &Cache){
+    tmp = list_entry(pos, Entry, list);
+    if (glfs_set_logging(tmp->glfs, logPath, GFAPI_LOG_LEVEL)) {
+      LOG("mgmt", GB_LOG_WARNING, "glfs_set_logging(%s, %d) on %s failed[%s]",
+          logPath, GFAPI_LOG_LEVEL, tmp->volume, strerror(errno));
+    }
+  }
+  UNLOCK(lru_lock);
+}
+
 
 int
 glusterBlockSetLruCount(const size_t lruCount)
@@ -51,6 +78,7 @@ releaseColdEntry(void)
   struct list_head *pos, *q = &Cache;
 
 
+  LOCK(lru_lock);
   list_for_each_prev(pos, q) {
     tmp = list_entry(pos, Entry, list);
     list_del(pos);
@@ -61,6 +89,7 @@ releaseColdEntry(void)
 
     break;
   }
+  UNLOCK(lru_lock);
 }
 
 
@@ -82,7 +111,9 @@ appendNewEntry(const char *volname, glfs_t *fs)
   GB_STRCPYSTATIC(tmp->volume, volname);
   tmp->glfs = fs;
 
+  LOCK(lru_lock);
   list_add(&(tmp->list), &Cache);
+  UNLOCK(lru_lock);
 
   lruCount++;
   UNLOCK(gbConf.lock);
@@ -116,13 +147,16 @@ queryCache(const char *volname)
   struct list_head *pos, *q, *r = &Cache;
 
 
+  LOCK(lru_lock);
   list_for_each_safe(pos, q, r){
     tmp = list_entry(pos, Entry, list);
     if (!strcmp(tmp->volume, volname)) {
       boostEntryWarmness(volname);
+      UNLOCK(lru_lock);
       return tmp->glfs;
     }
   }
+  UNLOCK(lru_lock);
 
   return NULL;
 }

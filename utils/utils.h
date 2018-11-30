@@ -29,7 +29,7 @@
 
 # include  "list.h"
 
-# define  GB_LOGDIR              DATADIR "/log/gluster-block"
+# define  GB_LOGDIR_DEF          DATADIR "/log/gluster-block"
 # define  GB_INFODIR             DATADIR "/run"
 
 # define  GB_LOCK_FILE           GB_INFODIR "/gluster-blockd.lock"
@@ -583,6 +583,7 @@ typedef struct gbConfig {
 
   bool isDynamic;
   char *GB_LOG_LEVEL;
+  char *GB_LOG_DIR;
   ssize_t GB_GLFS_LRU_COUNT;
   ssize_t GB_CLI_TIMEOUT;  /* seconds */
 } gbConfig;
@@ -608,6 +609,8 @@ int blockRemoteCreateRespEnumParse(const char *opt);
 void logTimeNow(char* buf, size_t bufSize);
 
 void fetchGlfsVolServerFromEnv(void);
+
+bool glusterBlockSetLogDir(char *logDir);
 
 int initLogging(void);
 
@@ -635,8 +638,10 @@ char *gbStrcat(char *dest, const char *src, size_t destbytes,
 
 void gbFree(void *ptrptr);
 
+char *glusterBlockDynConfigGetLogDir(void);
+
 void glusterBlockDestroyConfig(struct gbConfig *cfg);
 
-gbConfig *glusterBlockSetupConfig(const char *path);
+gbConfig *glusterBlockSetupConfig(void);
 
 #endif  /* _UTILS_H */
