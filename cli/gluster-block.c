@@ -1032,7 +1032,7 @@ main(int argc, char *argv[])
     goto fail;
   }
 
-  if(initLogging()) {
+  if(initLogging("cli")) {
     goto fail;
   }
 
