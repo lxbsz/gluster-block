@@ -47,7 +47,7 @@
 # define   GB_ALUA_ANO_TPG_NAME         "glfs_tg_pt_gp_ano"
 # define   GB_RING_BUFFER_STR           "max_data_area_mb"
 
-#define    GB_CMD_TIME_OUT      130
+#define    GB_CMD_TIME_OUT      1300000
 
 # define   GB_OLD_CAP_MAX       9
 
