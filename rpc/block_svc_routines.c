@@ -1066,7 +1066,16 @@ glusterBlockDeleteRemote(void *data)
   blockDelete dobj = *(blockDelete *)args->obj;
   char *errMsg = NULL;
   bool rpc_sent = FALSE;
+  struct glfs_fd *lkfd = NULL;
 
+
+  lkfd = glusterBlockCreateMetaLockFile(args->glfs, args->volume, &ret, &errMsg);
+  if (!lkfd) {
+    LOG("mgmt", GB_LOG_ERROR, "%s %s", FAILED_CREATING_META, args->volume);
+    goto out;
+  }
+
+  GB_METALOCK_OR_GOTO(lkfd, args->volume, ret, errMsg, out);
 
   GB_METAUPDATE_OR_GOTO(lock, args->glfs, dobj.block_name, args->volume,
                         ret, errMsg, out, "%s: CLEANUPINPROGRESS\n", args->addr);
@@ -1098,6 +1107,7 @@ glusterBlockDeleteRemote(void *data)
                         ret, errMsg, out, "%s: CLEANUPSUCCESS\n", args->addr);
 
  out:
+  GB_METAUNLOCK(lkfd, args->volume, ret, errMsg);
   if (!args->reply) {
     if (GB_ASPRINTF(&args->reply, "failed to delete config on %s %s",
                     args->addr, errMsg?errMsg:"") == -1) {
@@ -1221,6 +1231,8 @@ glusterBlockDeleteRemoteAsync(char *blockname,
   size_t i;
   MetaInfo *info_new = NULL;
   int cleanupsuccess = 0;
+  struct glfs_fd *lkfd = NULL;
+  char *errMsg;
 
 
   if (GB_ALLOC_N(tid, count) < 0) {
@@ -1281,12 +1293,21 @@ glusterBlockDeleteRemoteAsync(char *blockname,
     goto out;
   }
 
+  lkfd = glusterBlockCreateMetaLockFile(glfs, info->volume, &ret, &errMsg);
+  if (!lkfd) {
+    LOG("mgmt", GB_LOG_ERROR, "%s %s", FAILED_CREATING_META, info->volume);
+    goto out;
+  }
+
+  GB_METALOCK_OR_GOTO(lkfd, info->volume, ret, errMsg, out);
+
   ret = blockGetMetaInfo(glfs, blockname, info_new, NULL);
   if (ret) {
     goto out;
   }
   ret = -1;
 
+  LOG("mgmt", GB_LOG_INFO, "info->nhosts: %d, cleanupsuccess: %d, info_new->list[i]->status[%s]", info->nhosts, cleanupsuccess, info_new->list[0]->status);
   for (i = 0; i < info_new->nhosts; i++) {
     switch (blockMetaStatusEnumParse(info_new->list[i]->status)) {
       case GB_CONFIG_INPROGRESS:  /* un touched */
@@ -1296,12 +1317,14 @@ glusterBlockDeleteRemoteAsync(char *blockname,
     }
   }
 
+        LOG("mgmt", GB_LOG_INFO, "info->nhosts: %d, cleanupsuccess: %d", info->nhosts, cleanupsuccess);
   if (cleanupsuccess == info->nhosts) {
     ret = 0;
   }
   *savereply = local;
 
  out:
+  GB_METAUNLOCK(lkfd, info->volume, ret, errMsg);
   GB_FREE(d_attempt);
   GB_FREE(d_success);
   GB_FREE(args);
