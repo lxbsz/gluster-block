@@ -29,7 +29,7 @@
 
 # define   GB_TGCLI_GLFS_PATH   "/backstores/user:glfs"
 # define   GB_TGCLI_GLFS        "targetcli " GB_TGCLI_GLFS_PATH
-# define   GB_TGCLI_CHECK       GB_TGCLI_GLFS " ls | grep ' %s ' | grep '/%s ' > " DEVNULLPATH
+# define   GB_TGCLI_CHECK       GB_TGCLI_GLFS " ls | grep ' %s ' | grep '/%s' > " DEVNULLPATH
 # define   GB_TGCLI_ISCSI_PATH  "/iscsi"
 # define   GB_TGCLI_GLFS_SAVE   GB_TGCLI_GLFS_PATH "/%s saveconfig"
 # define   GB_TGCLI_ATTRIBUTES  "generate_node_acls=1 demo_mode_write_protect=0"
