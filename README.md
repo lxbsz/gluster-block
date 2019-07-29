@@ -75,6 +75,7 @@ commands:
                               [storage <filename>]
                               [ring-buffer <size-in-MB-units>]
                               [block-size <size-in-Byte-units>]
+                              [tcmur-timeout <N-in-Second>]
                               <host1[,host2,...]> [size]
         create block device [defaults: ha 1, auth disable, prealloc full, size in bytes,
                              ring-buffer and block-size default size dependends on kernel]

@@ -35,10 +35,12 @@
 # define   GB_TGCLI_ATTRIBUTES  "generate_node_acls=1 demo_mode_write_protect=0"
 # define   GB_TGCLI_IQN_PREFIX  "iqn.2016-12.org.gluster-block:"
 
-# define   GB_RING_BUFFER_STR   "max_data_area_mb"
-# define   GB_BLOCK_SIZE_STR    "hw_block_size"
+# define   GB_RING_BUFFER_STR       "max_data_area_mb"
+# define   GB_BLOCK_SIZE_STR        "hw_block_size"
+# define   GB_TCMUR_CMD_TIMEOUT_STR "tcmur_cmd_time_out"
 
 #define    GB_CMD_TIME_OUT      130
+#define    GB_TCMUR_CMD_TIMEOUT 43
 
 # define   GB_JSON_OBJ_TO_STR(x) json_object_new_string(x?x:"")
 # define   GB_DEFAULT_ERRMSG    "Operation failed, please check the log "\

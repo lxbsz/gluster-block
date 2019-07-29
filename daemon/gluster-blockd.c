@@ -458,6 +458,14 @@ gbDependenciesVersionCheck(void)
   }
   GB_FREE(out);
 
+  out = gbRunnerGetOutput("python -c 'from configshell_fb import __version__; print(__version__)'");
+  if (!out[0]) {
+    LOG("mgmt", GB_LOG_INFO, "starting with configshell version < 1.1.25");
+  } else {
+    LOG("mgmt", GB_LOG_INFO, "starting with configshell version - %s", out);
+  }
+  GB_FREE(out);
+
   return;
 
  out:

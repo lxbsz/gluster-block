@@ -36,6 +36,37 @@ gbCapabilitiesEnumParse(const char *cap)
 }
 
 
+bool
+gbTcmurCmdTimeoutDependenciesVersionCheck(void)
+{
+  char *out = NULL;
+  int ret = true;
+
+
+  out = gbRunnerGetOutput("python -c 'from configshell_fb import __version__; print(__version__)'");
+  if (!gbDependencyVersionCompare(CONFIGSHELL_SEMICOLON, out)) {
+    LOG ("mgmt", GB_LOG_INFO,
+         "to support 'tcmur_cmd_timeout' the configshell version at least >= %s",
+         GB_MIN_CONFIGSHELL_SEM_VERSION);
+    ret = false;
+    goto out;
+  }
+
+  GB_FREE(out);
+  out = gbRunnerGetOutput("tcmu-runner --version 2>&1 | awk -F' ' '{printf $NF}'");
+  if (!gbDependencyVersionCompare(TCMURUNNER_CMD_TIMEOUT, out)) {
+    LOG ("mgmt", GB_LOG_INFO,
+         "to support 'tcmur_cmd_timeout' the tcmu-runner version at least >= %s",
+         GB_MIN_TCMURUNNER_CMD_TIMEOUT_VERSION);
+    ret = false;
+  }
+
+out:
+  GB_FREE(out);
+  return ret;
+}
+
+
 static bool
 gbBlockSizeDependenciesVersionCheck(void)
 {

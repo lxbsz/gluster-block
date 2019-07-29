@@ -149,3 +149,14 @@ create_load_balance: true
 # Since: 0.5
 ##
 create_block_size: true
+
+##
+# Nature: cli sub-command
+#
+# Label: 'tcmur-timeout'
+#
+# Description: capability to create block with given cmds timeout value in tcmu-runner
+#
+# Since: 0.5
+##
+create_tcmur_timeout: true

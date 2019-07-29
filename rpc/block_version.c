@@ -44,6 +44,9 @@ glusterBlockBuildMinCaps(void *data, operations opt)
     if (cblk->rb_size) {
       minCaps[GB_CREATE_RING_BUFFER_CAP] = true;
     }
+    if (cblk->tcmur_timeout) {
+      minCaps[GB_CREATE_RING_BUFFER_CAP] = true;
+    }
     if (cblk->blk_size) {
       minCaps[GB_CREATE_BLOCK_SIZE_CAP] = true;
     }

@@ -41,12 +41,12 @@ enum gbCapabilities {
   GB_REPLACE_CAP,
 
   GB_CREATE_RING_BUFFER_CAP,
-
   GB_CREATE_LOAD_BALANCE_CAP,
 
   GB_JSON_CAP,
 
   GB_CREATE_BLOCK_SIZE_CAP,
+  GB_CREATE_TCMUR_TIMEOUT_CAP,
 
   GB_CAP_MAX
 };
@@ -60,6 +60,7 @@ static const char *const gbCapabilitiesLookup[] = {
   [GB_CREATE_RING_BUFFER_CAP]  = "create_ring_buffer",
   [GB_CREATE_LOAD_BALANCE_CAP] = "create_load_balance",
   [GB_CREATE_BLOCK_SIZE_CAP]   = "create_block_size",
+  [GB_CREATE_TCMUR_TIMEOUT_CAP]= "create_tcmur_timeout",
 
   [GB_DELETE_CAP]              = "delete",
   [GB_DELETE_FORCE_CAP]        = "delete_force",
@@ -81,3 +82,4 @@ extern gbCapObj *globalCapabilities;
 
 int gbCapabilitiesEnumParse(const char *cap);
 void gbSetCapabilties(void);
+bool gbTcmurCmdTimeoutDependenciesVersionCheck(void);

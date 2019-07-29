@@ -610,6 +610,9 @@ blockStuffMetaInfo(MetaInfo *info, char *line)
   case GB_META_RINGBUFFER:
     sscanf(strchr(line, ' '), "%zu", &info->rb_size);
     break;
+  case GB_META_TCMUR_CMD_TIMEOUT:
+    sscanf(strchr(line, ' '), "%lu", &info->tcmur_timeout);
+    break;
   case GB_META_BLKSIZE:
     sscanf(strchr(line, ' '), "%zu", &info->blk_size);
     break;
