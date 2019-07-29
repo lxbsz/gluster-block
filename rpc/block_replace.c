@@ -605,7 +605,7 @@ blockReplaceNodeCliFormatResponse(blockReplaceCli *blk, int errCode, char *errMs
       GB_FREE(tmp);
     }
 
-    if (GB_ASPRINTF(&reply->out, "%s\n", entry) == -1) {
+    if (GB_ASPRINTF(&reply->out, "%s", entry) == -1) {
       goto out;
     }
     GB_FREE(entry);
